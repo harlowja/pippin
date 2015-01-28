@@ -16,10 +16,11 @@ import requests
 import six
 from six.moves import urllib
 
+import pip
+
 try:
     from pip import util as pip_util
 except ImportError:
-    # pip >=6 changed this location for some reason...
     from pip import utils as pip_util
 
 
@@ -28,6 +29,17 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 # Egg info cache and url fetch caches...
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
+_KNOWN_BUSTED = set()
+
+
+def make_busted_key(req, gathered):
+    def _req_cmp(a, b):
+        return cmp(a.key, b.key)
+    gathered_reqs = [r.req for r in six.itervalues(gathered)]
+    if req not in gathered_reqs:
+        gathered_reqs.append(req)
+    gathered_reqs = sorted(gathered_reqs, cmp=_req_cmp)
+    return "\n".join([str(r) for r in gathered_reqs])
 
 
 class RequirementException(Exception):
@@ -135,13 +147,13 @@ def find_versions(pkg_name):
             if r['packagetype'] == 'sdist':
                 rel = r['url']
         if rel is None:
-            print("ERROR: no sdist found for '%s %s'" % (pkg_name, v))
+            print("ERROR: no sdist found for '%s==%s'" % (pkg_name, v))
             continue
         try:
-            releases.append((str(v), dist_version.StrictVersion(v),
+            releases.append((str(v), dist_version.LooseVersion(v),
                              pkg_resources.Requirement.parse(v), rel))
         except ValueError:
-            print("ERROR: failed parsing '%s %s'" % (pkg_name, v))
+            print("ERROR: failed parsing '%s==%s'" % (pkg_name, v))
     _FINDER_LOOKUPS[url] = sorted(releases, cmp=sorter)
     return _FINDER_LOOKUPS[url]
 
@@ -172,23 +184,35 @@ def match_available(req, available):
                 fh.write(resp.content)
         return get_archive_details(path)
     looked_in = []
+    useables = []
     for a in reversed(available):
         v = a[0]
         if v in req:
             line = "%s==%s" % (req.key, v)
             m_req = pip_req.InstallRequirement.from_line(line)
-            m_req.details = _detail(m_req, a[-1])
-            return m_req
+            print("Found '%s' as able to satisfy '%s'" % (m_req, req))
+            try:
+                m_req.details = _detail(m_req, a[-1])
+            except pip.exceptions.InstallationError as e:
+                print("ERROR: failed detailing '%s'" % (m_req))
+                e_blob = str(e)
+                for line in e_blob.splitlines():
+                    print(" %s" % line)
+            else:
+                useables.append(m_req)
         else:
             looked_in.append(v)
-    raise NotFoundException("No requirement found that"
-                            " matches '%s' (tried %s)" % (req, looked_in))
+    if not useables:
+        raise NotFoundException("No requirement found that"
+                                " matches '%s' (tried %s)" % (req, looked_in))
+    else:
+        return useables
 
 
 def is_compatible_alongside(req, gathered):
     print("Checking if '%s' is compatible along-side:" % req)
     for name, other_req in six.iteritems(gathered):
-        print(" - %s (%s)" % (name, other_req.details['version']))
+        print(" - %s==%s" % (name, other_req.details['version']))
         for other_dep in other_req.details['dependencies']:
             print("  + %s" % (other_dep))
     req_details = req.details
@@ -218,31 +242,37 @@ def probe(requirements, gathered):
     pkg_name, pkg_requirements = requirements.popitem()
     for req in pkg_requirements:
         print("Searching for pypi requirement that matches '%s'" % (req.req))
-        m = match_available(req.req, find_versions(pkg_name))
-        print("Matched '%s'" % m)
-        old_requirements = copy.deepcopy(requirements)
-        if m.details['dependencies']:
-            for m_dep in m.details['dependencies']:
-                m_req = pip_req.InstallRequirement.from_line(m_dep)
-                requirements.setdefault(req_key(m_req), []).append(m_req)
-        local_compat = is_compatible_alongside(m, gathered)
-        if local_compat:
-            gathered[pkg_name] = m
-            try:
-                result = probe(requirements, gathered)
-            except RequirementException as e:
-                print("Undoing decision to select '%s' since we"
-                      " %s that work along side it..." % (m, e))
-                gathered.pop(pkg_name)
-                requirements = old_requirements
+        possibles = match_available(req.req, find_versions(pkg_name))
+        for m in possibles:
+            if  make_busted_key(m.req, gathered) in _KNOWN_BUSTED:
+                print("Skipping '%s' as it is known to not work..." % m.req)
+                continue
+            print("Matched '%s'" % m)
+            old_requirements = copy.deepcopy(requirements)
+            if m.details['dependencies']:
+                for m_dep in m.details['dependencies']:
+                    m_req = pip_req.InstallRequirement.from_line(m_dep)
+                    requirements.setdefault(req_key(m_req), []).append(m_req)
+            local_compat = is_compatible_alongside(m, gathered)
+            if local_compat:
+                gathered[pkg_name] = m
+                try:
+                    result = probe(requirements, gathered)
+                except RequirementException as e:
+                    print("Undoing decision to select '%s' since we"
+                          " %s that work along side it..." % (m, e))
+                    gathered.pop(pkg_name)
+                    requirements = old_requirements
+                    _KNOWN_BUSTED.add(make_busted_key(m.req, gathered))
+                else:
+                    gathered.update(result)
+                    return gathered
             else:
-                gathered.update(result)
-                return gathered
-        else:
-            print("ERROR: '%s' was not found to be compatible with the"
-                  " currently gathered requirements (trying a"
-                  " different version)..." % req)
-            requirements = old_requirements
+                print("ERROR: '%s' was not found to be compatible with the"
+                      " currently gathered requirements (trying a"
+                      " different version)..." % req)
+                requirements = old_requirements
+                _KNOWN_BUSTED.add(m.req)
     failed_requirements = []
     for req in pkg_requirements:
         if req.req not in failed_requirements:
