@@ -45,17 +45,6 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 # Egg info cache and url fetch caches...
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
-_KNOWN_BUSTED = set()
-
-
-def make_busted_key(req, gathered):
-    def _req_cmp(a, b):
-        return cmp(a.key, b.key)
-    gathered_reqs = [r.req for r in six.itervalues(gathered)]
-    if req not in gathered_reqs:
-        gathered_reqs.append(req)
-    gathered_reqs = sorted(gathered_reqs, cmp=_req_cmp)
-    return "\n".join([str(r) for r in gathered_reqs])
 
 
 class RequirementException(Exception):
@@ -299,10 +288,7 @@ def probe(requirements, gathered, options):
                         print(" %s" % line)
             if not hasattr(m, 'details'):
                 continue
-            if make_busted_key(m.req, gathered) in _KNOWN_BUSTED:
-                print("Skipping '%s' as it is known to not work..." % m.req)
-                continue
-            print("Matched '%s'" % m)
+            print("Trying '%s'" % m)
             old_requirements = copy.deepcopy(requirements)
             if m.details['dependencies']:
                 for m_dep in m.details['dependencies']:
@@ -319,7 +305,6 @@ def probe(requirements, gathered, options):
                           " %s that work along side it..." % (m, e))
                     gathered.pop(pkg_name)
                     requirements = old_requirements
-                    _KNOWN_BUSTED.add(make_busted_key(m.req, gathered))
                 else:
                     gathered.update(result)
                     return gathered
