@@ -225,11 +225,15 @@ def is_compatible_alongside(req, gathered):
     for name, other_req in six.iteritems(gathered):
         if req.key == name:
             if req_details['version'] not in other_req.req:
+                print("Conflict: '%s' not in '%s'"
+                      % (req_details['version'], other_req))
                 return False
         for other_dep in other_req.details['dependencies']:
             other_dep_req = pkg_resources.Requirement.parse(other_dep)
             if other_dep_req.key == req.key:
                 if req_details['version'] not in other_dep_req:
+                    print("Conflict: '%s' not in '%s'"
+                          % (req_details['version'], other_dep_req))
                     return False
     return True
 
