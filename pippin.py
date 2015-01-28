@@ -299,6 +299,8 @@ def probe(requirements, gathered):
 def main():
     parser = create_parser()
     options = parser.parse_args()
+    if not options.requirements:
+        parser.error("At least one requirement file must be provided")
     initial = parse_requirements(options)
     print("Initial package set:")
     dump_requirements(initial)
