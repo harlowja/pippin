@@ -1,4 +1,4 @@
 six
 argparse
-pip
+pip<6
 requests
