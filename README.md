@@ -15,7 +15,8 @@ $ pip install -r requirements.txt
 Run like:
 
 ```
-$ python pippin.py  -r test.txt
+$ git clone git://git.openstack.org/openstack/requirements
+$ python pippin.py  -r requirements/global-requirements.txt
 ```
 
-[1]: http://www.customink.com/designs/stackpip/qvh0-0015-grtw/
+[1]: http://www.customink.com/designs/stackpip/qvh0-0015-grtw/hotlink?pc=HL-76683
