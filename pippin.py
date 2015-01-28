@@ -50,6 +50,12 @@ class NotFoundException(Exception):
     pass
 
 
+_MatchedRequirement = collections.namedtuple('_MatchedRequirement',
+                                             ['string_version',
+                                              'parsed_version',
+                                              'origin_url',
+                                              'origin_filename'])
+
 def req_key(req):
     return req.req.key
 
@@ -142,16 +148,18 @@ def find_versions(pkg_name):
     resp_data = resp.json()
     releases = []
     for v, release_infos in six.iteritems(resp_data['releases']):
-        rel = None
+        rel = rel_fn = None
         for r in release_infos:
             if r['packagetype'] == 'sdist':
                 rel = r['url']
-        if rel is None:
+                rel_fn = r['filename']
+        if not all([rel, rel_fn]):
             print("ERROR: no sdist found for '%s==%s'" % (pkg_name, v))
             continue
         try:
-            releases.append((str(v), dist_version.LooseVersion(v),
-                             pkg_resources.Requirement.parse(v), rel))
+            releases.append(_MatchedRequirement(
+                             str(v), dist_version.LooseVersion(v),
+                             rel, rel_fn))
         except ValueError:
             print("ERROR: failed parsing '%s==%s'" % (pkg_name, v))
     _FINDER_LOOKUPS[url] = sorted(releases, cmp=sorter)
@@ -174,32 +182,29 @@ def dump_requirements(requirements):
             print("- %s" % (k))
 
 
+def fetch_details(req):
+    origin_filename = req.origin_filename
+    origin_url = req.origin_url
+    path = os.path.join(os.getcwd(), '.download', origin_filename)
+    if not os.path.exists(path):
+        resp = requests.get(origin_url)
+        with open(path, 'wb') as fh:
+            fh.write(resp.content)
+    return get_archive_details(path)
+
+
 def match_available(req, available):
-    def _detail(req, origin_url):
-        filename = os.path.basename(origin_url)
-        path = os.path.join(os.getcwd(), '.download', filename)
-        if not os.path.exists(path):
-            resp = requests.get(origin_url)
-            with open(path, 'wb') as fh:
-                fh.write(resp.content)
-        return get_archive_details(path)
     looked_in = []
     useables = []
     for a in reversed(available):
-        v = a[0]
+        v = a.string_version
         if v in req:
             line = "%s==%s" % (req.key, v)
             m_req = pip_req.InstallRequirement.from_line(line)
             print("Found '%s' as able to satisfy '%s'" % (m_req, req))
-            try:
-                m_req.details = _detail(m_req, a[-1])
-            except pip.exceptions.InstallationError as e:
-                print("ERROR: failed detailing '%s'" % (m_req))
-                e_blob = str(e)
-                for line in e_blob.splitlines():
-                    print(" %s" % line)
-            else:
-                useables.append(m_req)
+            m_req.origin_url = a.origin_url
+            m_req.origin_filename = a.origin_filename
+            useables.append(m_req)
         else:
             looked_in.append(v)
     if not useables:
@@ -244,6 +249,16 @@ def probe(requirements, gathered):
         print("Searching for pypi requirement that matches '%s'" % (req.req))
         possibles = match_available(req.req, find_versions(pkg_name))
         for m in possibles:
+            if not hasattr(m, 'details'):
+                try:
+                    m.details = fetch_details(m)
+                except pip.exceptions.InstallationError as e:
+                    print("ERROR: failed detailing '%s'" % (m))
+                    e_blob = str(e)
+                    for line in e_blob.splitlines():
+                        print(" %s" % line)
+            if not hasattr(m, 'details'):
+                continue
             if  make_busted_key(m.req, gathered) in _KNOWN_BUSTED:
                 print("Skipping '%s' as it is known to not work..." % m.req)
                 continue
