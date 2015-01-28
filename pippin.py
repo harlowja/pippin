@@ -258,9 +258,9 @@ def is_compatible_alongside(req, gathered):
             other_dep_req = pkg_resources.Requirement.parse(other_dep)
             if other_dep_req.key == req.key:
                 if req_details['version'] not in other_dep_req:
-                    print("Conflict: '%s==%s' not in '%s'"
+                    print("Conflict: '%s==%s' not in '%s' (required by '%s')"
                           % (req_details['name'],
-                             req_details['version'], other_dep_req))
+                             req_details['version'], other_dep_req, other_req))
                     return False
     return True
 
