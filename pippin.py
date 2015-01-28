@@ -17,10 +17,13 @@
 import collections
 import contextlib
 import copy
+import hashlib
 import json
 import os
 import shutil
 import tempfile
+
+from datetime import datetime
 
 from distutils import version as dist_version
 
@@ -48,6 +51,10 @@ _FINDER_LOOKUPS = {}
 
 
 class RequirementException(Exception):
+    pass
+
+
+class PriorRequirementException(RequirementException):
     pass
 
 
@@ -262,6 +269,43 @@ def is_compatible_alongside(req, gathered):
     return True
 
 
+def stringify_gathered(gathered):
+    def sorter(a, b):
+        return cmp(a.key, b.key)
+    all_reqs = []
+    for name, other_req in six.iteritems(gathered):
+        all_reqs.append(other_req.req)
+    all_reqs = sorted(all_reqs, cmp=sorter)
+    buf = six.StringIO()
+    for req in all_reqs:
+        buf.write(req)
+        buf.write("\n")
+    buf = buf.getvalue().strip()
+    buf_digest = hashlib.md5(buf).hexdigest()
+    return (buf, buf_digest)
+
+
+def write_failure(gathered, options):
+    blob, blob_digest = stringify_gathered(gathered)
+    blob_filename = os.path.join(options.scratch, '.failed',
+                                 "%s.txt" % blob_digest)
+    if not os.path.exists(blob_filename):
+        with open(blob_filename, 'wb') as fh:
+            fh.write("# Created on %s" % datetime.now().isoformat())
+            fh.write("\n")
+            fh.write(blob)
+
+
+def check_prior_failed(gathered, options):
+    blob, blob_digest = stringify_gathered(gathered)
+    blob_filename = os.path.join(options.scratch, '.failed',
+                                 "%s.txt" % blob_digest)
+    if os.path.exists(blob_filename):
+        raise PriorRequirementException("already found this combination"
+                                        " fails in a prior run (stored at %s)"
+                                        % os.path.basename(blob_filename))
+
+
 def probe(requirements, gathered, options):
     if not requirements:
         return {}
@@ -299,10 +343,16 @@ def probe(requirements, gathered, options):
                 print("Picking '%s'" % m)
                 gathered[pkg_name] = m
                 try:
+                    check_prior_failed(gathered, options)
                     result = probe(requirements, gathered, options)
                 except RequirementException as e:
-                    print("Undoing decision to select '%s' since we"
-                          " %s that work along side it..." % (m, e))
+                    if not isinstance(e, PriorRequirementException):
+                        print("Undoing decision to select '%s' since we"
+                              " %s that work along side it..." % (m, e))
+                        write_failure(gathered, options)
+                    else:
+                        print("Undoing decision to select '%s' since we"
+                              " %s..." % (m, e))
                     gathered.pop(pkg_name)
                     requirements = old_requirements
                 else:
@@ -329,7 +379,7 @@ def main():
     initial = parse_requirements(options)
     print("Initial package set:")
     dump_requirements(initial)
-    for d in ['.download', '.versions']:
+    for d in ['.download', '.versions', '.failed']:
         scratch_path = os.path.join(options.scratch, d)
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
