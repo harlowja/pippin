@@ -18,4 +18,4 @@ Run like:
 $ python pippin.py  -r test.txt
 ```
 
-[1]: http://www.customink.com/designs/stackpip/qvh0-0015-grtw/hotlink?pc=HL-76683 
+[1]: http://www.customink.com/designs/stackpip/qvh0-0015-grtw/
