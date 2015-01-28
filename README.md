@@ -1,3 +1,7 @@
+# Pippin
+
+#### Pippin ain't easy [1]
+
 A *prototype* of a recursive backtracking pip dependency solver...
 
 Get ready like:
@@ -10,9 +14,8 @@ $ pip install -r requirements.txt
 
 Run like:
 
-
-
 ```
-$ git clone git://git.openstack.org/openstack/requirements
-$ python pippin.py  -r requirements/global-requirements.txt
+$ python pippin.py  -r test.txt
 ```
+
+[1]: www.customink.com/designs/stackpip/qvh0-0015-grtw/hotlink?pc=HL-76683 
