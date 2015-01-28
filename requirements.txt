@@ -1,0 +1,4 @@
+six
+argparse
+pip
+requests
