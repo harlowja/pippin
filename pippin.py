@@ -2,6 +2,7 @@ import collections
 import contextlib
 import copy
 import itertools
+import json
 import os
 import shutil
 import tempfile
@@ -144,8 +145,15 @@ def find_versions(pkg_name):
     url = _FINDER_URL_TPL % (urllib.parse.quote(pkg_name))
     if url in _FINDER_LOOKUPS:
         return _FINDER_LOOKUPS[url]
-    resp = requests.get(url)
-    resp_data = resp.json()
+    version_path = os.path.join(".versions", "%s.json" % pkg_name)
+    if os.path.exists(version_path):
+        with open(version_path, 'rb') as fh:
+            resp_data = json.loads(fh.read())
+    else:
+        resp = requests.get(url)
+        resp_data = resp.json()
+        with open(version_path, 'wb') as fh:
+            fh.write(json.dumps(resp_data))
     releases = []
     for v, release_infos in six.iteritems(resp_data['releases']):
         rel = rel_fn = None
@@ -308,7 +316,7 @@ def main():
     initial = parse_requirements(options)
     print("Initial package set:")
     dump_requirements(initial)
-    for d in ['.download']:
+    for d in ['.download', '.versions']:
         if not os.path.isdir(os.path.join(os.getcwd(), d)):
             os.makedirs(os.path.join(os.getcwd(), d))
     matches = probe(initial, {})
