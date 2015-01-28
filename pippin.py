@@ -1,7 +1,22 @@
+# -*- coding: utf-8 -*-
+
+#    Copyright (C) 2015 Yahoo! Inc. All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
 import collections
 import contextlib
 import copy
-import itertools
 import json
 import os
 import shutil
@@ -56,6 +71,7 @@ _MatchedRequirement = collections.namedtuple('_MatchedRequirement',
                                               'parsed_version',
                                               'origin_url',
                                               'origin_filename'])
+
 
 def req_key(req):
     return req.req.key
@@ -135,7 +151,8 @@ def parse_requirements(options):
             for req in pip_req.parse_requirements(filename):
                 all_requirements.setdefault(req_key(req), []).append(req)
         except Exception as ex:
-            raise RequirementException("Cannot parse `%s': %s" % (filename, ex))
+            raise RequirementException("Cannot parse `%s': %s"
+                                       % (filename, ex))
     return all_requirements
 
 
@@ -166,8 +183,8 @@ def find_versions(pkg_name):
             continue
         try:
             releases.append(_MatchedRequirement(
-                             str(v), dist_version.LooseVersion(v),
-                             rel, rel_fn))
+                            str(v), dist_version.LooseVersion(v),
+                            rel, rel_fn))
         except ValueError:
             print("ERROR: failed parsing '%s==%s'" % (pkg_name, v))
     _FINDER_LOOKUPS[url] = sorted(releases, cmp=sorter)
@@ -273,7 +290,7 @@ def probe(requirements, gathered):
                         print(" %s" % line)
             if not hasattr(m, 'details'):
                 continue
-            if  make_busted_key(m.req, gathered) in _KNOWN_BUSTED:
+            if make_busted_key(m.req, gathered) in _KNOWN_BUSTED:
                 print("Skipping '%s' as it is known to not work..." % m.req)
                 continue
             print("Matched '%s'" % m)
