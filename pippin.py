@@ -141,6 +141,13 @@ def create_parser():
         default=[],
         metavar="<file>",
         help="Analyze all the packages listed in the given requirements file")
+    parser.add_argument(
+        "-s", "--scratch",
+        dest="scratch",
+        default=os.getcwd(),
+        metavar="<path>",
+        help="Scratch path (used for caching downloaded data)"
+             " [default: %s]" % (os.getcwd()))
     return parser
 
 
@@ -156,13 +163,14 @@ def parse_requirements(options):
     return all_requirements
 
 
-def find_versions(pkg_name):
+def find_versions(pkg_name, options):
     def sorter(r1, r2):
         return cmp(r1[1], r2[1])
     url = _FINDER_URL_TPL % (urllib.parse.quote(pkg_name))
     if url in _FINDER_LOOKUPS:
         return _FINDER_LOOKUPS[url]
-    version_path = os.path.join(".versions", "%s.json" % pkg_name)
+    version_path = os.path.join(options.scratch,
+                                ".versions", "%s.json" % pkg_name)
     if os.path.exists(version_path):
         with open(version_path, 'rb') as fh:
             resp_data = json.loads(fh.read())
@@ -207,10 +215,10 @@ def dump_requirements(requirements):
             print("- %s" % (k))
 
 
-def fetch_details(req):
+def fetch_details(req, options):
     origin_filename = req.origin_filename
     origin_url = req.origin_url
-    path = os.path.join(os.getcwd(), '.download', origin_filename)
+    path = os.path.join(options.scratch, '.download', origin_filename)
     if not os.path.exists(path):
         resp = requests.get(origin_url)
         with open(path, 'wb') as fh:
@@ -265,7 +273,7 @@ def is_compatible_alongside(req, gathered):
     return True
 
 
-def probe(requirements, gathered):
+def probe(requirements, gathered, options):
     if not requirements:
         return {}
     requirements = copy.deepcopy(requirements)
@@ -278,11 +286,12 @@ def probe(requirements, gathered):
     pkg_name, pkg_requirements = requirements.popitem()
     for req in pkg_requirements:
         print("Searching for pypi requirement that matches '%s'" % (req.req))
-        possibles = match_available(req.req, find_versions(pkg_name))
+        possibles = match_available(req.req,
+                                    find_versions(pkg_name, options))
         for m in possibles:
             if not hasattr(m, 'details'):
                 try:
-                    m.details = fetch_details(m)
+                    m.details = fetch_details(m, options)
                 except pip.exceptions.InstallationError as e:
                     print("ERROR: failed detailing '%s'" % (m))
                     e_blob = str(e)
@@ -304,7 +313,7 @@ def probe(requirements, gathered):
                 print("Picking '%s'" % m)
                 gathered[pkg_name] = m
                 try:
-                    result = probe(requirements, gathered)
+                    result = probe(requirements, gathered, options)
                 except RequirementException as e:
                     print("Undoing decision to select '%s' since we"
                           " %s that work along side it..." % (m, e))
@@ -336,9 +345,10 @@ def main():
     print("Initial package set:")
     dump_requirements(initial)
     for d in ['.download', '.versions']:
-        if not os.path.isdir(os.path.join(os.getcwd(), d)):
-            os.makedirs(os.path.join(os.getcwd(), d))
-    matches = probe(initial, {})
+        scratch_path = os.path.join(options.scratch, d)
+        if not os.path.isdir(scratch_path):
+            os.makedirs(scratch_path)
+    matches = probe(initial, {}, options)
     print("Deep package set:")
     dump_requirements(matches)
 
