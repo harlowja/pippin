@@ -318,7 +318,6 @@ def probe(requirements, gathered):
                       " currently gathered requirements (trying a"
                       " different version)..." % req)
                 requirements = old_requirements
-                _KNOWN_BUSTED.add(m.req)
     failed_requirements = []
     for req in pkg_requirements:
         if req.req not in failed_requirements:
