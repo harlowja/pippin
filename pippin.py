@@ -301,6 +301,7 @@ def probe(requirements, gathered):
                     requirements.setdefault(req_key(m_req), []).append(m_req)
             local_compat = is_compatible_alongside(m, gathered)
             if local_compat:
+                print("Picking '%s'" % m)
                 gathered[pkg_name] = m
                 try:
                     result = probe(requirements, gathered)
