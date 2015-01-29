@@ -50,6 +50,7 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 # Egg info cache and url fetch caches...
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
+_EGGS_FAILED_DETAILED = {}
 
 # Only select the X prior versions for checking compatiblity if there
 # are many possible versions (this reduces the search space to something
@@ -120,22 +121,30 @@ def get_directory_details(path):
 def get_archive_details(filename, prefix=""):
     if not os.path.isfile(filename):
         raise IOError("Can not detail non-existent file %s" % (filename))
-    cache_key = "f:%s:%s" % (os.path.basename(filename),
-                             os.path.getsize(filename))
-    if cache_key in _EGGS_DETAILED:
+    cache_key = "f:%s" % (os.path.basename(filename))
+    if cache_key in _EGGS_FAILED_DETAILED:
+        exc_type, exc_value, exc_traceback = _EGGS_FAILED_DETAILED[cache_key]
+        six.reraise(exc_type, exc_value, exc_traceback=exc_traceback)
+    try:
         return _EGGS_DETAILED[cache_key]
-    print("%sExtracting egg-info from '%s'" % (prefix,
-                                               os.path.basename(filename)))
-    with tempdir() as a_dir:
-        arch_filename = os.path.join(a_dir, os.path.basename(filename))
-        shutil.copyfile(filename, arch_filename)
-        extract_to = os.path.join(a_dir, 'build')
-        os.makedirs(extract_to)
-        pip_util.unpack_file(arch_filename, extract_to,
-                             content_type='', link='')
-        details = get_directory_details(extract_to)
-    _EGGS_DETAILED[cache_key] = details
-    return details
+    except KeyError:
+        print("%sExtracting egg-info from '%s'" % (prefix,
+                                                   os.path.basename(filename)))
+        with tempdir() as a_dir:
+            arch_filename = os.path.join(a_dir, os.path.basename(filename))
+            shutil.copyfile(filename, arch_filename)
+            extract_to = os.path.join(a_dir, 'build')
+            os.makedirs(extract_to)
+            pip_util.unpack_file(arch_filename, extract_to,
+                                 content_type='', link='')
+            try:
+                details = get_directory_details(extract_to)
+            except pip.exceptions.InstallationError:
+                _EGGS_FAILED_DETAILED[cache_key] = sys.exc_info()
+                raise
+            else:
+                _EGGS_DETAILED[cache_key] = details
+                return details
 
 
 def create_parser():
