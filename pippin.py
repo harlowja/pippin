@@ -52,6 +52,11 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
 
+# Only select the X prior versions for checking compatiblity if there
+# are many possible versions (this reduces the search space to something
+# more amenable/manageable).
+_MAX_PRIOR_VERSIONS = 3
+
 
 class RequirementException(Exception):
     pass
@@ -247,6 +252,8 @@ def match_available(req, available, options, prefix=""):
             m_req.origin_url = a.origin_url
             m_req.origin_filename = a.origin_filename
             useables.append(m_req)
+            if len(useables) == _MAX_PRIOR_VERSIONS:
+                break
         else:
             looked_in.append(v)
     if not useables:
