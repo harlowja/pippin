@@ -18,7 +18,6 @@ from __future__ import print_function
 
 import collections
 import contextlib
-import copy
 import hashlib
 import json
 import os
@@ -338,9 +337,18 @@ def check_prior_failed(gathered, options):
 def probe(requirements, gathered, options, indent=0):
     if not requirements:
         return {}
+    def copy_requirements(requirements):
+        cloned = {}
+        for pkg_name, pkg_requirements in six.iteritems(requirements):
+            cloned_pkg_requirements = cloned.setdefault(pkg_name, [])
+            cloned_pkg_requirements.extend(pkg_requirements)
+        return cloned
+    def copy_gathered(gathered):
+        return gathered.copy()
     prefix = " " * indent
-    requirements = copy.deepcopy(requirements)
-    gathered = copy.deepcopy(gathered)
+    requirements = copy_requirements(requirements)
+    old_requirements = copy_requirements(requirements)
+    gathered = copy_gathered(gathered)
     # Pick one of the requirements, get a version that works with the current
     # known siblings (other requirements that are requested along side this
     # requirement) and then recurse trying to get another requirement that
@@ -348,7 +356,6 @@ def probe(requirements, gathered, options, indent=0):
     # version instead (and repeat)...
     pkg_name, pkg_requirements = requirements.popitem()
     tried_and_failed = set()
-    old_requirements = copy.deepcopy(requirements)
     while pkg_requirements:
         pkg_req = pkg_requirements.pop(0)
         if pkg_req.req in tried_and_failed:
@@ -402,15 +409,15 @@ def probe(requirements, gathered, options, indent=0):
                         print("%sUndoing decision to select '%s' since we"
                               " %s..." % (prefix, m, e))
                     gathered.pop(pkg_name)
-                    requirements = old_requirements
+                    requirements = copy_requirements(initial_requirements)
                 else:
                     gathered.update(result)
                     return gathered
             else:
                 print("%sFailed: '%s' was not found to be compatible with the"
                       " currently gathered requirements (trying a"
-                      " different version)..." % (prefix, req))
-                requirements = old_requirements
+                      " different version)..." % (prefix, pkg_req))
+                requirements = copy_requirements(initial_requirements)
         tried_and_failed.add(pkg_req.req)
     raise RequirementException("failed finding any valid matches"
                                " for %s" % list(tried_and_failed))
