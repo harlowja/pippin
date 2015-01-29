@@ -116,13 +116,15 @@ def get_directory_details(path):
     return details
 
 
-def get_archive_details(filename):
+def get_archive_details(filename, prefix=""):
     if not os.path.isfile(filename):
         raise IOError("Can not detail non-existent file %s" % (filename))
     cache_key = "f:%s:%s" % (os.path.basename(filename),
                              os.path.getsize(filename))
     if cache_key in _EGGS_DETAILED:
         return _EGGS_DETAILED[cache_key]
+    print("%sExtracting egg-info from '%s'" % (prefix,
+                                               os.path.basename(filename)))
     with tempdir() as a_dir:
         arch_filename = os.path.join(a_dir, os.path.basename(filename))
         shutil.copyfile(filename, arch_filename)
@@ -160,6 +162,14 @@ def create_parser():
     return parser
 
 
+def download_url_to(url, save_path, prefix=""):
+    print("%sDownloading '%s' -> '%s'" % (prefix, url, save_path))
+    resp = requests.get(url)
+    with open(save_path, 'wb') as fh:
+        fh.write(resp.content)
+    return resp.content
+
+
 def parse_requirements(options):
     all_requirements = {}
     for filename in options.requirements:
@@ -184,12 +194,7 @@ def find_versions(pkg_name, options, prefix=""):
         with open(version_path, 'rb') as fh:
             resp_data = json.loads(fh.read())
     else:
-        if options.verbose:
-            print("%sDownloading '%s' -> '%s'" % (prefix, url, version_path))
-        resp = requests.get(url)
-        resp_data = resp.json()
-        with open(version_path, 'wb') as fh:
-            fh.write(json.dumps(resp_data))
+        resp_data = json.loads(download_url_to(url, save_path, prefix=prefix))
     releases = []
     for v, release_infos in six.iteritems(resp_data['releases']):
         rel = rel_fn = None
@@ -234,14 +239,11 @@ def dump_requirements(requirements):
 def fetch_details(req, options, prefix=""):
     origin_filename = req.origin_filename
     origin_url = req.origin_url
-    path = os.path.join(options.scratch, '.download', origin_filename)
-    if not os.path.exists(path):
-        if options.verbose:
-            print("%sDownloading '%s' -> '%s'" % (prefix, origin_url, path))
-        resp = requests.get(origin_url)
-        with open(path, 'wb') as fh:
-            fh.write(resp.content)
-    return get_archive_details(path)
+    download_path = os.path.join(options.scratch,
+                                 '.download', origin_filename)
+    if not os.path.exists(download_path):
+        download_url_to(origin_url, download_path, prefix=prefix)
+    return get_archive_details(download_path, prefix=prefix)
 
 
 def match_available(req, available, options, prefix=""):
