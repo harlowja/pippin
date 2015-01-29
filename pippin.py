@@ -29,6 +29,7 @@ import os
 import shutil
 import sys
 import tempfile
+import traceback
 
 from distutils import version as dist_version
 
@@ -54,13 +55,18 @@ _FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
 _KNOWN_FAILURES = set()
 
+# How many probings we performed (and how often to tell the user what probe
+# we are at)...
+_PROBE_COUNT = 0
+_PROBE_EMIT = 500
+
 # Only select the X prior versions for checking compatiblity if there
 # are many possible versions (this reduces the search space to something
 # more amenable/manageable).
 _MAX_PRIOR_VERSIONS = 3
 
 # Used when creating/copying new requirement dicts...
-_dict_cls = OrderedDict
+_DICT_CLS = OrderedDict
 
 
 class RequirementException(Exception):
@@ -75,12 +81,12 @@ class NotFoundException(Exception):
     pass
 
 
-_MatchedRequirement = collections.namedtuple('_MatchedRequirement',
-                                             ['string_version',
-                                              'parsed_version',
-                                              'origin_url',
-                                              'origin_filename',
-                                              'origin_size'])
+_MatchedRelease = collections.namedtuple('_MatchedRelease',
+                                         ['string_version',
+                                          'parsed_version',
+                                          'origin_url',
+                                          'origin_filename',
+                                          'origin_size'])
 
 
 def req_key(req):
@@ -123,7 +129,7 @@ def get_directory_details(path):
     return details
 
 
-def get_archive_details(filename, filesize, prefix=""):
+def get_archive_details(filename, filesize, options, prefix=""):
     if not os.path.isfile(filename):
         raise IOError("Can not detail non-existent file %s" % (filename))
     cache_key = "f:%s:%s" % (os.path.basename(filename), filesize)
@@ -133,8 +139,9 @@ def get_archive_details(filename, filesize, prefix=""):
     try:
         return _EGGS_DETAILED[cache_key]
     except KeyError:
-        print("%sExtracting egg-info from '%s'" % (prefix,
-                                                   os.path.basename(filename)))
+        if options.verbose:
+            print("%sExtracting egg-info from '%s'"
+                  % (prefix, os.path.basename(filename)))
         with tempdir() as a_dir:
             arch_filename = os.path.join(a_dir, os.path.basename(filename))
             shutil.copyfile(filename, arch_filename)
@@ -179,13 +186,15 @@ def create_parser():
     return parser
 
 
-def download_url_to(url, save_path, size=None, prefix=""):
+def download_url_to(url, save_path, options, size=None, prefix=""):
     if size is not None:
         kb_size = size // 1024
-        print("%sDownloading '%s' (%skB) -> '%s'" % (prefix, url,
-                                                     kb_size, save_path))
+        if options.verbose:
+            print("%sDownloading '%s' (%skB) -> '%s'" % (prefix, url,
+                                                         kb_size, save_path))
     else:
-        print("%sDownloading '%s' -> '%s'" % (prefix, url, save_path))
+        if options.verbose:
+            print("%sDownloading '%s' -> '%s'" % (prefix, url, save_path))
     resp = requests.get(url)
     with open(save_path, 'wb') as fh:
         fh.write(resp.content)
@@ -193,14 +202,13 @@ def download_url_to(url, save_path, size=None, prefix=""):
 
 
 def parse_requirements(options):
-    all_requirements = _dict_cls()
+    all_requirements = _DICT_CLS()
     for filename in options.requirements:
         try:
             for req in pip_req.parse_requirements(filename):
                 all_requirements.setdefault(req_key(req), []).append(req)
         except Exception as ex:
-            raise RequirementException("Cannot parse `%s': %s"
-                                       % (filename, ex))
+            raise IOError("Cannot parse '%s': %s" % (filename, ex))
     return all_requirements
 
 
@@ -217,7 +225,8 @@ def find_versions(pkg_name, options, prefix=""):
             resp_data = json.loads(fh.read())
     else:
         resp_data = json.loads(download_url_to(url,
-                                               version_path, prefix=prefix))
+                                               version_path,
+                                               options, prefix=prefix))
     releases = []
     for v, release_infos in six.iteritems(resp_data['releases']):
         rel = rel_fn = rel_size = None
@@ -227,16 +236,17 @@ def find_versions(pkg_name, options, prefix=""):
                 rel_fn = r['filename']
                 rel_size = r['size']
         if not all([rel, rel_fn, rel_size]):
-            print("%sERROR: no sdist found for '%s==%s'"
-                  % (prefix, pkg_name, v), file=sys.stderr)
+            print("ERROR: no sdist found for '%s==%s'"
+                  % (pkg_name, v), file=sys.stderr)
             continue
         try:
-            releases.append(_MatchedRequirement(
-                            str(v), dist_version.LooseVersion(v),
-                            rel, rel_fn, rel_size))
+            m_rel = _MatchedRelease(
+                v, dist_version.LooseVersion(v),
+                rel, rel_fn, rel_size)
+            releases.append(m_rel)
         except ValueError:
-            print("%sERROR: failed parsing '%s==%s'"
-                  % (prefix, pkg_name, v), file=sys.stderr)
+            print("ERROR: failed parsing '%s==%s'"
+                  % (pkg_name, v), file=sys.stderr)
     _FINDER_LOOKUPS[url] = sorted(releases, cmp=sorter)
     return _FINDER_LOOKUPS[url]
 
@@ -266,9 +276,9 @@ def fetch_details(req, options, prefix=""):
     download_path = os.path.join(options.scratch,
                                  '.download', origin_filename)
     if not os.path.exists(download_path):
-        download_url_to(origin_url, download_path,
+        download_url_to(origin_url, download_path, options,
                         size=req.origin_size, prefix=prefix)
-    return get_archive_details(download_path, req.origin_size,
+    return get_archive_details(download_path, req.origin_size, options,
                                prefix=prefix)
 
 
@@ -298,7 +308,7 @@ def match_available(req, available, options, prefix=""):
         return useables
 
 
-def is_compatible_alongside(req, gathered, options, prefix=""):
+def check_is_compatible_alongside(req, gathered, options, prefix=""):
     if options.verbose:
         print("%sChecking if '%s' is compatible along-side:" % (prefix, req))
         for name, other_req in six.iteritems(gathered):
@@ -307,23 +317,23 @@ def is_compatible_alongside(req, gathered, options, prefix=""):
                 print("%s  + %s" % (prefix, other_dep))
     req_details = req.details
     req = req.req
-    for name, other_req in six.iteritems(gathered):
-        if req.key == name:
+    for req_name, other_req in six.iteritems(gathered):
+        if req.key == req_name:
             if req_details['version'] not in other_req.req:
-                print("%sConflict: '%s==%s' not in '%s'"
-                      % (prefix, req_details['name'],
-                         req_details['version'], other_req))
-                return False
-        for other_dep in other_req.details['dependencies']:
+                raise RequirementException("'%s==%s' not in '%s'"
+                                           % (req_details['name'],
+                                              req_details['version'],
+                                              other_req))
+        for other_dep in other_req.details.get('dependencies', []):
             other_dep_req = pkg_resources.Requirement.parse(other_dep)
             if other_dep_req.key == req.key:
                 if req_details['version'] not in other_dep_req:
-                    print("%sConflict: '%s==%s' not in '%s' (required by '%s')"
-                          % (prefix, req_details['name'],
-                             req_details['version'],
-                             other_dep_req, other_req))
-                    return False
-    return True
+                    raise RequirementException("'%s==%s' not in '%s'"
+                                               " (required"
+                                               " by '%s')"
+                                               % (req_details['name'],
+                                                  req_details['version'],
+                                                  other_dep_req, other_req))
 
 
 def hash_gathered(gathered):
@@ -338,15 +348,11 @@ def hash_gathered(gathered):
         buf.write(req)
         buf.write("\n")
     buf = buf.getvalue().strip()
-    return hashlib.md5(buf).hexdigest()
-
-
-def save_failure(gathered):
-    _KNOWN_FAILURES.add(hash_gathered(gathered))
+    return buf, hashlib.md5(buf).hexdigest()
 
 
 def check_prior_failed(gathered):
-    gathered_hash = hash_gathered(gathered)
+    gathered, gathered_hash = hash_gathered(gathered)
     if gathered_hash in _KNOWN_FAILURES:
         raise PriorRequirementException("already found this combination"
                                         " fails in a prior run (hash %s)"
@@ -354,40 +360,28 @@ def check_prior_failed(gathered):
 
 
 def copy_requirements(requirements):
-    cloned = _dict_cls()
+    cloned = _DICT_CLS()
     for pkg_name, pkg_requirements in six.iteritems(requirements):
         cloned_pkg_requirements = cloned.setdefault(pkg_name, [])
         cloned_pkg_requirements.extend(pkg_requirements)
     return cloned
 
 
-def copy_gathered(gathered):
-    return gathered.copy()
-
-
-def insert_new_if_not_exists(requirements, m_req):
-    m_req_key = req_key(m_req)
-    existing_reqs = requirements.get(m_req_key, [])
-    already_exists = False
-    for a_req in existing_reqs:
-        if a_req.req == m_req.req:
-            already_exists = True
-            break
-    if not already_exists:
-        existing_reqs = requirements.setdefault(m_req_key, [])
-        existing_reqs.append(m_req)
-
-
 def probe(requirements, gathered, options, indent=0):
     if not requirements:
-        return _dict_cls()
+        return _DICT_CLS()
+
+    # Only try to pretty format things with indents... if in verbose mode...
+    if options.verbose:
+        prefix = " " * indent
+    else:
+        prefix = ''
 
     # Save/clone the requirements/gathred before mutation so that we
     # can undo any changes without affecting other existing probe calls
     # references to those same dictionaries (which would be bad)...
-    prefix = " " * indent
     requirements = copy_requirements(requirements)
-    gathered = copy_gathered(gathered)
+    gathered = gathered.copy()
 
     # Pick one of the requirements, get a version that works with the current
     # known siblings (other requirements that are requested along side this
@@ -395,7 +389,16 @@ def probe(requirements, gathered, options, indent=0):
     # will work, if this is not possible, backtrack and try a different
     # version instead (and repeat)...
     pkg_name, pkg_requirements = requirements.popitem()
-    before_changes_requirements = copy_requirements(requirements)
+
+    # Track how many probes we have done (and show the user something useful
+    # to know that the program hasn't stalled...)
+    global _PROBE_COUNT
+    _PROBE_COUNT += 1
+    if _PROBE_COUNT > 0 and (_PROBE_COUNT % _PROBE_EMIT == 0):
+        if not options.verbose:
+            print("Trying probe %s (current depth = %s, left = %s) ..."
+                  % (_PROBE_COUNT, indent, len(requirements)))
+            print("Please wait...")
 
     tried_and_failed = set()
     for pkg_req in pkg_requirements:
@@ -412,48 +415,37 @@ def probe(requirements, gathered, options, indent=0):
                 try:
                     m.details = fetch_details(m, options, prefix=prefix)
                 except Exception as e:
-                    print("%sERROR: failed detailing '%s'"
-                          % (prefix, m), file=sys.stderr)
+                    print("ERROR: failed detailing '%s'"
+                          % (m), file=sys.stderr)
                     e_blob = str(e)
                     for line in e_blob.splitlines():
-                        print("%s %s" % (prefix, line), file=sys.stderr)
+                        print("%s" % (line), file=sys.stderr)
             if not hasattr(m, 'details'):
                 continue
-            print("%sTrying '%s'" % (prefix, m))
-            # Save this new dependencies requirements and request the next
-            # probing to use that before trying any other requirements...
-            if m.details['dependencies']:
-                for m_dep in m.details['dependencies']:
-                    m_req = pip_req.InstallRequirement.from_line(m_dep)
-                    insert_new_if_not_exists(requirements, m_req)
-            local_compat = is_compatible_alongside(m, gathered, options,
-                                                   prefix=prefix)
-            if local_compat:
+            if options.verbose:
                 print("%sPicking '%s'" % (prefix, m))
-                gathered[pkg_name] = m
-                try:
-                    check_prior_failed(gathered)
-                    result = probe(requirements, gathered, options,
-                                   indent=indent + 1)
-                except RequirementException as e:
-                    if not isinstance(e, PriorRequirementException):
+            gathered[pkg_name] = m
+            try:
+                check_prior_failed(gathered)
+                check_is_compatible_alongside(m, gathered, options,
+                                              prefix=prefix)
+                result = probe(requirements, gathered, options,
+                               indent=indent + 1)
+            except RequirementException as e:
+                if not isinstance(e, PriorRequirementException):
+                    if options.verbose:
                         print("%sUndoing decision to select '%s' since we"
                               " %s that work along side it + the currently"
                               " gathered requirements..." % (prefix, m, e))
-                        save_failure(gathered)
-                    else:
+                    _KNOWN_FAILURES.add(hash_gathered(gathered)[1])
+                else:
+                    if options.verbose:
                         print("%sUndoing decision to select '%s' since we"
                               " %s..." % (prefix, m, e))
-                    gathered.pop(pkg_name)
-                    requirements = before_changes_requirements
-                else:
-                    gathered.update(result)
-                    return gathered
+                gathered.pop(pkg_name)
             else:
-                print("%sFailed: '%s' was not found to be compatible with"
-                      " the currently gathered requirements (trying a"
-                      " different version)..." % (prefix, pkg_req))
-                requirements = before_changes_requirements
+                gathered.update(result)
+                return gathered
         tried_and_failed.add(pkg_req.req)
     raise RequirementException("failed finding any valid matches"
                                " for %s" % list(tried_and_failed))
@@ -472,9 +464,13 @@ def main():
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
     print("Probing for a valid set...")
-    matches = probe(initial, _dict_cls(), options, indent=1)
-    print("Deep package set:")
-    dump_requirements(matches)
+    try:
+        matches = probe(initial, _DICT_CLS(), options, indent=1)
+    except Exception:
+        traceback.print_exc(file=sys.stdout)
+    else:
+        print("Deep package set:")
+        dump_requirements(matches)
 
 
 if __name__ == "__main__":
