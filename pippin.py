@@ -73,7 +73,8 @@ _MatchedRequirement = collections.namedtuple('_MatchedRequirement',
                                              ['string_version',
                                               'parsed_version',
                                               'origin_url',
-                                              'origin_filename'])
+                                              'origin_filename',
+                                              'origin_size'])
 
 
 def req_key(req):
@@ -162,8 +163,13 @@ def create_parser():
     return parser
 
 
-def download_url_to(url, save_path, prefix=""):
-    print("%sDownloading '%s' -> '%s'" % (prefix, url, save_path))
+def download_url_to(url, save_path, size=None, prefix=""):
+    if size is not None:
+        kb_size = size // 1024
+        print("%sDownloading '%s' (%skB) -> '%s'" % (prefix, url,
+                                                     kb_size, save_path))
+    else:
+        print("%sDownloading '%s' -> '%s'" % (prefix, url, save_path))
     resp = requests.get(url)
     with open(save_path, 'wb') as fh:
         fh.write(resp.content)
@@ -198,19 +204,20 @@ def find_versions(pkg_name, options, prefix=""):
                                                version_path, prefix=prefix))
     releases = []
     for v, release_infos in six.iteritems(resp_data['releases']):
-        rel = rel_fn = None
+        rel = rel_fn = rel_size = None
         for r in release_infos:
             if r['packagetype'] == 'sdist':
                 rel = r['url']
                 rel_fn = r['filename']
-        if not all([rel, rel_fn]):
+                rel_size = r['size']
+        if not all([rel, rel_fn, rel_size]):
             print("%sERROR: no sdist found for '%s==%s'"
                   % (prefix, pkg_name, v), file=sys.stderr)
             continue
         try:
             releases.append(_MatchedRequirement(
                             str(v), dist_version.LooseVersion(v),
-                            rel, rel_fn))
+                            rel, rel_fn, rel_size))
         except ValueError:
             print("%sERROR: failed parsing '%s==%s'"
                   % (prefix, pkg_name, v), file=sys.stderr)
@@ -243,7 +250,8 @@ def fetch_details(req, options, prefix=""):
     download_path = os.path.join(options.scratch,
                                  '.download', origin_filename)
     if not os.path.exists(download_path):
-        download_url_to(origin_url, download_path, prefix=prefix)
+        download_url_to(origin_url, download_path,
+                        size=req.origin_size, prefix=prefix)
     return get_archive_details(download_path, prefix=prefix)
 
 
@@ -260,6 +268,7 @@ def match_available(req, available, options, prefix=""):
                       % (prefix, m_req, req))
             m_req.origin_url = a.origin_url
             m_req.origin_filename = a.origin_filename
+            m_req.origin_size = a.origin_size
             useables.append(m_req)
             if len(useables) == _MAX_PRIOR_VERSIONS:
                 break
