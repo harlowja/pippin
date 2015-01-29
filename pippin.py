@@ -37,8 +37,6 @@ import requests
 import six
 from six.moves import urllib
 
-import pip
-
 try:
     from pip import util as pip_util
 except ImportError:
@@ -140,7 +138,9 @@ def get_archive_details(filename, filesize, prefix=""):
             try:
                 details = get_directory_details(extract_to)
             except Exception:
-                _EGGS_FAILED_DETAILED[cache_key] = sys.exc_info()
+                # Don't bother saving the traceback (we don't care about it...)
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                _EGGS_FAILED_DETAILED[cache_key] = (exc_type, exc_value, None)
                 raise
             else:
                 _EGGS_DETAILED[cache_key] = details
