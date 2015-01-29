@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import print_function
+
 import collections
 import contextlib
 import copy
@@ -21,6 +23,7 @@ import hashlib
 import json
 import os
 import shutil
+import sys
 import tempfile
 
 from datetime import datetime
@@ -144,6 +147,12 @@ def create_parser():
         metavar="<path>",
         help="Scratch path (used for caching downloaded data)"
              " [default: %s]" % (os.getcwd()))
+    parser.add_argument(
+        "--verbose",
+        dest="verbose",
+        action='store_true',
+        default=False,
+        help="Enable verbose output")
     return parser
 
 
@@ -184,7 +193,7 @@ def find_versions(pkg_name, options, prefix=""):
                 rel_fn = r['filename']
         if not all([rel, rel_fn]):
             print("%sERROR: no sdist found for '%s==%s'"
-                  % (prefix, pkg_name, v))
+                  % (prefix, pkg_name, v), file=sys.stderr)
             continue
         try:
             releases.append(_MatchedRequirement(
@@ -192,7 +201,7 @@ def find_versions(pkg_name, options, prefix=""):
                             rel, rel_fn))
         except ValueError:
             print("%sERROR: failed parsing '%s==%s'"
-                  % (prefix, pkg_name, v))
+                  % (prefix, pkg_name, v), file=sys.stderr)
     _FINDER_LOOKUPS[url] = sorted(releases, cmp=sorter)
     return _FINDER_LOOKUPS[url]
 
@@ -224,7 +233,7 @@ def fetch_details(req, options):
     return get_archive_details(path)
 
 
-def match_available(req, available, prefix=""):
+def match_available(req, available, options, prefix=""):
     looked_in = []
     useables = []
     for a in reversed(available):
@@ -232,8 +241,9 @@ def match_available(req, available, prefix=""):
         if v in req:
             line = "%s==%s" % (req.key, v)
             m_req = pip_req.InstallRequirement.from_line(line)
-            print("%sFound '%s' as able to satisfy '%s'"
-                  % (prefix, m_req, req))
+            if options.verbose:
+                print("%sFound '%s' as able to satisfy '%s'"
+                      % (prefix, m_req, req))
             m_req.origin_url = a.origin_url
             m_req.origin_filename = a.origin_filename
             useables.append(m_req)
@@ -246,12 +256,13 @@ def match_available(req, available, prefix=""):
         return useables
 
 
-def is_compatible_alongside(req, gathered, prefix=""):
-    print("%sChecking if '%s' is compatible along-side:" % (prefix, req))
-    for name, other_req in six.iteritems(gathered):
-        print("%s - %s==%s" % (prefix, name, other_req.details['version']))
-        for other_dep in other_req.details['dependencies']:
-            print("%s  + %s" % (prefix, other_dep))
+def is_compatible_alongside(req, gathered, options, prefix=""):
+    if options.verbose:
+        print("%sChecking if '%s' is compatible along-side:" % (prefix, req))
+        for name, other_req in six.iteritems(gathered):
+            print("%s - %s==%s" % (prefix, name, other_req.details['version']))
+            for other_dep in other_req.details['dependencies']:
+                print("%s  + %s" % (prefix, other_dep))
     req_details = req.details
     req = req.req
     for name, other_req in six.iteritems(gathered):
@@ -323,21 +334,24 @@ def probe(requirements, gathered, options, indent=0):
     # version instead (and repeat)...
     pkg_name, pkg_requirements = requirements.popitem()
     for req in pkg_requirements:
-        print("%sSearching for pypi requirement that matches '%s'"
-              % (prefix, req.req))
+        if options.verbose:
+            print("%sSearching for pypi requirement that matches '%s'"
+                  % (prefix, req.req))
         possibles = match_available(req.req,
                                     find_versions(pkg_name, options,
                                                   prefix=prefix),
+                                    options,
                                     prefix=prefix)
         for m in possibles:
             if not hasattr(m, 'details'):
                 try:
                     m.details = fetch_details(m, options)
                 except pip.exceptions.InstallationError as e:
-                    print("%sERROR: failed detailing '%s'" % (prefix, m))
+                    print("%sERROR: failed detailing '%s'"
+                          % (prefix, m), file=sys.stderr)
                     e_blob = str(e)
                     for line in e_blob.splitlines():
-                        print("%s %s" % (prefix, line))
+                        print("%s %s" % (prefix, line), file=sys.stderr)
             if not hasattr(m, 'details'):
                 continue
             print("%sTrying '%s'" % (prefix, m))
@@ -346,7 +360,7 @@ def probe(requirements, gathered, options, indent=0):
                 for m_dep in m.details['dependencies']:
                     m_req = pip_req.InstallRequirement.from_line(m_dep)
                     requirements.setdefault(req_key(m_req), []).append(m_req)
-            local_compat = is_compatible_alongside(m, gathered,
+            local_compat = is_compatible_alongside(m, gathered, options,
                                                    prefix=prefix)
             if local_compat:
                 print("%sPicking '%s'" % (prefix, m))
@@ -370,7 +384,7 @@ def probe(requirements, gathered, options, indent=0):
                     gathered.update(result)
                     return gathered
             else:
-                print("%sERROR: '%s' was not found to be compatible with the"
+                print("%sFailed: '%s' was not found to be compatible with the"
                       " currently gathered requirements (trying a"
                       " different version)..." % (prefix, req))
                 requirements = old_requirements
@@ -394,7 +408,8 @@ def main():
         scratch_path = os.path.join(options.scratch, d)
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
-    matches = probe(initial, {}, options)
+    print("Probing for a valid set...")
+    matches = probe(initial, {}, options, indent=1)
     print("Deep package set:")
     dump_requirements(matches)
 
