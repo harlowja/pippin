@@ -349,14 +349,17 @@ def check_prior_failed(gathered, options):
 def probe(requirements, gathered, options, indent=0):
     if not requirements:
         return {}
+
     def copy_requirements(requirements):
         cloned = {}
         for pkg_name, pkg_requirements in six.iteritems(requirements):
             cloned_pkg_requirements = cloned.setdefault(pkg_name, [])
             cloned_pkg_requirements.extend(pkg_requirements)
         return cloned
+
     def copy_gathered(gathered):
         return gathered.copy()
+
     prefix = " " * indent
     requirements = copy_requirements(requirements)
     gathered = copy_gathered(gathered)
