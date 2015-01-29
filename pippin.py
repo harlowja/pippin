@@ -37,6 +37,7 @@ from pip import req as pip_req
 import pkg_resources
 
 import argparse
+import pylru
 import requests
 import six
 from six.moves import urllib
@@ -53,7 +54,7 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
-_KNOWN_FAILURES = set()
+_KNOWN_FAILURES = pylru.lrucache(20000)
 
 # How many probings we performed (and how often to tell the user what probe
 # we are at)...
@@ -458,7 +459,8 @@ def probe(requirements, gathered, options, indent=0):
                         print("%sUndoing decision to select '%s' since we"
                               " %s that work along side it + the currently"
                               " gathered requirements..." % (prefix, m, e))
-                    _KNOWN_FAILURES.add(hash_gathered(gathered)[1])
+                    _gathered, gathered_hash = hash_gathered(gathered)
+                    _KNOWN_FAILURES[gathered_hash] = True
                 else:
                     if options.verbose:
                         print("%sUndoing decision to select '%s' since we"
