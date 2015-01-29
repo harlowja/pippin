@@ -118,10 +118,10 @@ def get_directory_details(path):
     return details
 
 
-def get_archive_details(filename, prefix=""):
+def get_archive_details(filename, filesize, prefix=""):
     if not os.path.isfile(filename):
         raise IOError("Can not detail non-existent file %s" % (filename))
-    cache_key = "f:%s" % (os.path.basename(filename))
+    cache_key = "f:%s:%s" % (os.path.basename(filename), filesize)
     if cache_key in _EGGS_FAILED_DETAILED:
         exc_type, exc_value, exc_traceback = _EGGS_FAILED_DETAILED[cache_key]
         six.reraise(exc_type, exc_value, exc_traceback)
@@ -261,7 +261,8 @@ def fetch_details(req, options, prefix=""):
     if not os.path.exists(download_path):
         download_url_to(origin_url, download_path,
                         size=req.origin_size, prefix=prefix)
-    return get_archive_details(download_path, prefix=prefix)
+    return get_archive_details(download_path, req.origin_size,
+                               prefix=prefix)
 
 
 def match_available(req, available, options, prefix=""):
