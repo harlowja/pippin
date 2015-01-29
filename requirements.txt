@@ -2,3 +2,4 @@ six
 argparse
 pip<6,>1.5
 requests
+ordereddict

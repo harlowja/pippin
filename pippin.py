@@ -16,6 +16,11 @@
 
 from __future__ import print_function
 
+try:
+    from collections import OrderedDict  # noqa
+except ImportError:
+    from ordereddict import OrderedDict  # noqa
+
 import collections
 import contextlib
 import hashlib
@@ -36,9 +41,9 @@ import six
 from six.moves import urllib
 
 try:
-    from pip import util as pip_util
+    from pip import util as pip_util  # noqa
 except ImportError:
-    from pip import utils as pip_util
+    from pip import utils as pip_util  # noqa
 
 
 _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
@@ -53,6 +58,9 @@ _KNOWN_FAILURES = set()
 # are many possible versions (this reduces the search space to something
 # more amenable/manageable).
 _MAX_PRIOR_VERSIONS = 3
+
+# Used when creating/copying new requirement dicts...
+_dict_cls = OrderedDict
 
 
 class RequirementException(Exception):
@@ -185,7 +193,7 @@ def download_url_to(url, save_path, size=None, prefix=""):
 
 
 def parse_requirements(options):
-    all_requirements = {}
+    all_requirements = _dict_cls()
     for filename in options.requirements:
         try:
             for req in pip_req.parse_requirements(filename):
@@ -343,15 +351,12 @@ def check_prior_failed(gathered):
                                         " fails in a prior run")
 
 
-def probe(requirements, gathered, options,
-          immediate_requirements=None, indent=0):
+def probe(requirements, immediate_requirements, gathered, options, indent=0):
     if not requirements:
-        return {}
-    if not immediate_requirements:
-        immediate_requirements = {}
+        return _dict_cls()
 
     def copy_requirements(requirements):
-        cloned = {}
+        cloned = _dict_cls()
         for pkg_name, pkg_requirements in six.iteritems(requirements):
             cloned_pkg_requirements = cloned.setdefault(pkg_name, [])
             cloned_pkg_requirements.extend(pkg_requirements)
@@ -375,84 +380,89 @@ def probe(requirements, gathered, options,
     prefix = " " * indent
     requirements = copy_requirements(requirements)
     gathered = copy_gathered(gathered)
+
+    # If immediate requirements are provided; try all of them first...
+    if immediate_requirements:
+        scan = list(six.iteritems(immediate_requirements))
+    else:
+        scan = [requirements.popitem()]
+
     # Pick one of the requirements, get a version that works with the current
     # known siblings (other requirements that are requested along side this
     # requirement) and then recurse trying to get another requirement that
     # will work, if this is not possible, backtrack and try a different
     # version instead (and repeat)...
-    if immediate_requirements:
-        pkg_name, pkg_requirements = immediate_requirements.popitem()
-    else:
-        pkg_name, pkg_requirements = requirements.popitem()
-    tried_and_failed = set()
     bm_requirements = copy_requirements(requirements)
-    while pkg_requirements:
-        pkg_req = pkg_requirements.pop(0)
-        if pkg_req.req in tried_and_failed:
-            continue
-        if options.verbose:
-            print("%sSearching for pypi requirement that matches '%s'"
-                  % (prefix, pkg_req.req))
-        possibles = match_available(pkg_req.req,
-                                    find_versions(pkg_name, options,
-                                                  prefix=prefix),
-                                    options,
-                                    prefix=prefix)
-        for m in possibles:
-            if not hasattr(m, 'details'):
-                try:
-                    m.details = fetch_details(m, options, prefix=prefix)
-                except Exception as e:
-                    print("%sERROR: failed detailing '%s'"
-                          % (prefix, m), file=sys.stderr)
-                    e_blob = str(e)
-                    for line in e_blob.splitlines():
-                        print("%s %s" % (prefix, line), file=sys.stderr)
-            if not hasattr(m, 'details'):
+    while scan:
+        tried_and_failed = set()
+        pkg_name, pkg_requirements = scan.pop(0)
+        while pkg_requirements:
+            pkg_req = pkg_requirements.pop(0)
+            if pkg_req.req in tried_and_failed:
                 continue
-            print("%sTrying '%s'" % (prefix, m))
-            # Save this new dependencies requirements and request the next
-            # probing to use that before trying any other requirements...
-            next_immediate_requirements = {}
-            if m.details['dependencies']:
-                for m_dep in m.details['dependencies']:
-                    m_req = pip_req.InstallRequirement.from_line(m_dep)
-                    insert_new_if_not_exists(requirements, m_req)
-                    insert_new_if_not_exists(next_immediate_requirements,
-                                             m_req)
-            local_compat = is_compatible_alongside(m, gathered, options,
-                                                   prefix=prefix)
-            if local_compat:
-                print("%sPicking '%s'" % (prefix, m))
-                gathered[pkg_name] = m
-                try:
-                    check_prior_failed(gathered)
-                    result = probe(
-                        requirements, gathered, options,
-                        indent=indent + 1,
-                        immediate_requirements=next_immediate_requirements)
-                except RequirementException as e:
-                    if not isinstance(e, PriorRequirementException):
-                        print("%sUndoing decision to select '%s' since we"
-                              " %s that work along side it + the currently"
-                              " gathered requirements..." % (prefix, m, e))
-                        save_failure(gathered)
+            if options.verbose:
+                print("%sSearching for pypi requirement that matches '%s'"
+                      % (prefix, pkg_req.req))
+            possibles = match_available(pkg_req.req,
+                                        find_versions(pkg_name, options,
+                                                      prefix=prefix),
+                                        options,
+                                        prefix=prefix)
+            for m in possibles:
+                if not hasattr(m, 'details'):
+                    try:
+                        m.details = fetch_details(m, options, prefix=prefix)
+                    except Exception as e:
+                        print("%sERROR: failed detailing '%s'"
+                              % (prefix, m), file=sys.stderr)
+                        e_blob = str(e)
+                        for line in e_blob.splitlines():
+                            print("%s %s" % (prefix, line), file=sys.stderr)
+                if not hasattr(m, 'details'):
+                    continue
+                print("%sTrying '%s'" % (prefix, m))
+                # Save this new dependencies requirements and request the next
+                # probing to use that before trying any other requirements...
+                next_immediate_requirements = _dict_cls()
+                if m.details['dependencies']:
+                    for m_dep in m.details['dependencies']:
+                        m_req = pip_req.InstallRequirement.from_line(m_dep)
+                        insert_new_if_not_exists(next_immediate_requirements,
+                                                 m_req)
+                local_compat = is_compatible_alongside(m, gathered, options,
+                                                       prefix=prefix)
+                if local_compat:
+                    print("%sPicking '%s'" % (prefix, m))
+                    gathered[pkg_name] = m
+                    try:
+                        check_prior_failed(gathered)
+                        result = probe(
+                            requirements, next_immediate_requirements,
+                            gathered, options,
+                            indent=indent + 1)
+                    except RequirementException as e:
+                        if not isinstance(e, PriorRequirementException):
+                            print("%sUndoing decision to select '%s' since we"
+                                  " %s that work along side it + the currently"
+                                  " gathered requirements..." % (prefix, m, e))
+                            save_failure(gathered)
+                        else:
+                            print("%sUndoing decision to select '%s' since we"
+                                  " %s..." % (prefix, m, e))
+                        gathered.pop(pkg_name)
+                        requirements = bm_requirements
                     else:
-                        print("%sUndoing decision to select '%s' since we"
-                              " %s..." % (prefix, m, e))
-                    gathered.pop(pkg_name)
-                    requirements = bm_requirements
+                        gathered.update(result)
+                        return gathered
                 else:
-                    gathered.update(result)
-                    return gathered
-            else:
-                print("%sFailed: '%s' was not found to be compatible with the"
-                      " currently gathered requirements (trying a"
-                      " different version)..." % (prefix, pkg_req))
-                requirements = bm_requirements
-        tried_and_failed.add(pkg_req.req)
-    raise RequirementException("failed finding any valid matches"
-                               " for %s" % list(tried_and_failed))
+                    print("%sFailed: '%s' was not found to be compatible with"
+                          " the currently gathered requirements (trying a"
+                          " different version)..." % (prefix, pkg_req))
+                    requirements = bm_requirements
+            tried_and_failed.add(pkg_req.req)
+        raise RequirementException("failed finding any valid matches"
+                                   " for %s" % list(tried_and_failed))
+    raise RuntimeError("Nothing found... badness...")
 
 
 def main():
@@ -468,7 +478,8 @@ def main():
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
     print("Probing for a valid set...")
-    matches = probe(initial, {}, options, indent=1)
+    matches = probe(initial, _dict_cls(), _dict_cls(),
+                    options, indent=1)
     print("Deep package set:")
     dump_requirements(matches)
 
