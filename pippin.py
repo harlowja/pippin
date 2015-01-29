@@ -194,7 +194,8 @@ def find_versions(pkg_name, options, prefix=""):
         with open(version_path, 'rb') as fh:
             resp_data = json.loads(fh.read())
     else:
-        resp_data = json.loads(download_url_to(url, save_path, prefix=prefix))
+        resp_data = json.loads(download_url_to(url,
+                                               version_path, prefix=prefix))
     releases = []
     for v, release_infos in six.iteritems(resp_data['releases']):
         rel = rel_fn = None
