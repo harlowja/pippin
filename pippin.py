@@ -347,7 +347,6 @@ def probe(requirements, gathered, options, indent=0):
         return gathered.copy()
     prefix = " " * indent
     requirements = copy_requirements(requirements)
-    old_requirements = copy_requirements(requirements)
     gathered = copy_gathered(gathered)
     # Pick one of the requirements, get a version that works with the current
     # known siblings (other requirements that are requested along side this
@@ -368,6 +367,7 @@ def probe(requirements, gathered, options, indent=0):
                                                   prefix=prefix),
                                     options,
                                     prefix=prefix)
+        before_mutation_requirements = copy_requirements(requirements)
         for m in possibles:
             if not hasattr(m, 'details'):
                 try:
@@ -381,12 +381,14 @@ def probe(requirements, gathered, options, indent=0):
             if not hasattr(m, 'details'):
                 continue
             print("%sTrying '%s'" % (prefix, m))
+            pkgs_added_on = 0
             if m.details['dependencies']:
                 for m_dep in m.details['dependencies']:
                     m_req = pip_req.InstallRequirement.from_line(m_dep)
                     m_req_key = req_key(m_req)
                     if m_req_key == req_key(pkg_req):
                         pkg_requirements.append(m_req)
+                        pkgs_added_on += 1
                     else:
                         existing_reqs = requirements.setdefault(m_req_key, [])
                         existing_reqs.append(m_req)
@@ -409,7 +411,10 @@ def probe(requirements, gathered, options, indent=0):
                         print("%sUndoing decision to select '%s' since we"
                               " %s..." % (prefix, m, e))
                     gathered.pop(pkg_name)
-                    requirements = copy_requirements(initial_requirements)
+                    requirements = before_mutation_requirements
+                    while pkgs_added_on:
+                        pkg_requirements.pop()
+                        pkgs_added_on -= 1
                 else:
                     gathered.update(result)
                     return gathered
@@ -417,7 +422,10 @@ def probe(requirements, gathered, options, indent=0):
                 print("%sFailed: '%s' was not found to be compatible with the"
                       " currently gathered requirements (trying a"
                       " different version)..." % (prefix, pkg_req))
-                requirements = copy_requirements(initial_requirements)
+                requirements = before_mutation_requirements
+                while pkgs_added_on:
+                    pkg_requirements.pop()
+                    pkgs_added_on -= 1
         tried_and_failed.add(pkg_req.req)
     raise RequirementException("failed finding any valid matches"
                                " for %s" % list(tried_and_failed))
