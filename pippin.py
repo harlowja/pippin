@@ -124,7 +124,7 @@ def get_archive_details(filename, prefix=""):
     cache_key = "f:%s" % (os.path.basename(filename))
     if cache_key in _EGGS_FAILED_DETAILED:
         exc_type, exc_value, exc_traceback = _EGGS_FAILED_DETAILED[cache_key]
-        six.reraise(exc_type, exc_value, exc_traceback=exc_traceback)
+        six.reraise(exc_type, exc_value, exc_traceback)
     try:
         return _EGGS_DETAILED[cache_key]
     except KeyError:
