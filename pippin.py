@@ -139,7 +139,7 @@ def get_archive_details(filename, prefix=""):
                                  content_type='', link='')
             try:
                 details = get_directory_details(extract_to)
-            except pip.exceptions.InstallationError:
+            except Exception:
                 _EGGS_FAILED_DETAILED[cache_key] = sys.exc_info()
                 raise
             else:
@@ -396,7 +396,7 @@ def probe(requirements, gathered, options, indent=0):
             if not hasattr(m, 'details'):
                 try:
                     m.details = fetch_details(m, options, prefix=prefix)
-                except pip.exceptions.InstallationError as e:
+                except Exception as e:
                     print("%sERROR: failed detailing '%s'"
                           % (prefix, m), file=sys.stderr)
                     e_blob = str(e)
