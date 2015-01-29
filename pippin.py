@@ -346,9 +346,11 @@ def save_failure(gathered):
 
 
 def check_prior_failed(gathered):
-    if hash_gathered(gathered) in _KNOWN_FAILURES:
+    gathered_hash = hash_gathered(gathered)
+    if gathered_hash in _KNOWN_FAILURES:
         raise PriorRequirementException("already found this combination"
-                                        " fails in a prior run")
+                                        " fails in a prior run (hash %s)"
+                                        % gathered_hash)
 
 
 def copy_requirements(requirements):
