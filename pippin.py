@@ -25,8 +25,6 @@ import shutil
 import sys
 import tempfile
 
-from datetime import datetime
-
 from distutils import version as dist_version
 
 from pip import req as pip_req
@@ -49,6 +47,7 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
+_KNOWN_FAILURES = set()
 
 # Only select the X prior versions for checking compatiblity if there
 # are many possible versions (this reduces the search space to something
@@ -319,7 +318,7 @@ def is_compatible_alongside(req, gathered, options, prefix=""):
     return True
 
 
-def stringify_gathered(gathered):
+def hash_gathered(gathered):
     def sorter(a, b):
         return cmp(a.key, b.key)
     all_reqs = []
@@ -331,29 +330,17 @@ def stringify_gathered(gathered):
         buf.write(req)
         buf.write("\n")
     buf = buf.getvalue().strip()
-    buf_digest = hashlib.md5(buf).hexdigest()
-    return (buf, buf_digest)
+    return hashlib.md5(buf).hexdigest()
 
 
-def write_failure(gathered, options):
-    blob, blob_digest = stringify_gathered(gathered)
-    blob_filename = os.path.join(options.scratch, '.failed',
-                                 "%s.txt" % blob_digest)
-    if not os.path.exists(blob_filename):
-        with open(blob_filename, 'wb') as fh:
-            fh.write("# Created on %s" % datetime.now().isoformat())
-            fh.write("\n")
-            fh.write(blob)
+def save_failure(gathered):
+    _KNOWN_FAILURES.add(hash_gathered(gathered))
 
 
-def check_prior_failed(gathered, options):
-    blob, blob_digest = stringify_gathered(gathered)
-    blob_filename = os.path.join(options.scratch, '.failed',
-                                 "%s.txt" % blob_digest)
-    if os.path.exists(blob_filename):
+def check_prior_failed(gathered):
+    if hash_gathered(gathered) in _KNOWN_FAILURES:
         raise PriorRequirementException("already found this combination"
-                                        " fails in a prior run (stored at %s)"
-                                        % os.path.basename(blob_filename))
+                                        " fails in a prior run")
 
 
 def probe(requirements, gathered, options, indent=0):
@@ -423,7 +410,7 @@ def probe(requirements, gathered, options, indent=0):
                 print("%sPicking '%s'" % (prefix, m))
                 gathered[pkg_name] = m
                 try:
-                    check_prior_failed(gathered, options)
+                    check_prior_failed(gathered)
                     result = probe(requirements, gathered, options,
                                    indent=indent+1)
                 except RequirementException as e:
@@ -431,7 +418,7 @@ def probe(requirements, gathered, options, indent=0):
                         print("%sUndoing decision to select '%s' since we"
                               " %s that work along side it + the currently"
                               " gathered requirements..." % (prefix, m, e))
-                        write_failure(gathered, options)
+                        save_failure(gathered)
                     else:
                         print("%sUndoing decision to select '%s' since we"
                               " %s..." % (prefix, m, e))
@@ -464,7 +451,7 @@ def main():
     initial = parse_requirements(options)
     print("Initial package set:")
     dump_requirements(initial)
-    for d in ['.download', '.versions', '.failed']:
+    for d in ['.download', '.versions']:
         scratch_path = os.path.join(options.scratch, d)
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
