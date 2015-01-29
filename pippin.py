@@ -185,6 +185,8 @@ def find_versions(pkg_name, options, prefix=""):
         with open(version_path, 'rb') as fh:
             resp_data = json.loads(fh.read())
     else:
+        if options.verbose:
+            print("%sDownloading '%s' -> '%s'" % (prefix, url, version_path))
         resp = requests.get(url)
         resp_data = resp.json()
         with open(version_path, 'wb') as fh:
@@ -222,16 +224,21 @@ def dump_requirements(requirements):
             r = requirements[k]
             k_restrictions.extend(["".join(s) for s in r.req.specs])
         if k_restrictions:
-            print("- %s %s" % (k, k_restrictions))
+            if len(k_restrictions) == 1:
+                print("- %s%s" % (k, k_restrictions[0]))
+            else:
+                print("- %s %s" % (k, k_restrictions))
         else:
             print("- %s" % (k))
 
 
-def fetch_details(req, options):
+def fetch_details(req, options, prefix=""):
     origin_filename = req.origin_filename
     origin_url = req.origin_url
     path = os.path.join(options.scratch, '.download', origin_filename)
     if not os.path.exists(path):
+        if options.verbose:
+            print("%sDownloading '%s' -> '%s'" % (prefix, origin_url, path))
         resp = requests.get(origin_url)
         with open(path, 'wb') as fh:
             fh.write(resp.content)
@@ -340,11 +347,16 @@ def probe(requirements, gathered, options, indent=0):
     # will work, if this is not possible, backtrack and try a different
     # version instead (and repeat)...
     pkg_name, pkg_requirements = requirements.popitem()
-    for req in pkg_requirements:
+    tried_and_failed = set()
+    old_requirements = copy.deepcopy(requirements)
+    while pkg_requirements:
+        pkg_req = pkg_requirements.pop(0)
+        if pkg_req.req in tried_and_failed:
+            continue
         if options.verbose:
             print("%sSearching for pypi requirement that matches '%s'"
-                  % (prefix, req.req))
-        possibles = match_available(req.req,
+                  % (prefix, pkg_req.req))
+        possibles = match_available(pkg_req.req,
                                     find_versions(pkg_name, options,
                                                   prefix=prefix),
                                     options,
@@ -352,7 +364,7 @@ def probe(requirements, gathered, options, indent=0):
         for m in possibles:
             if not hasattr(m, 'details'):
                 try:
-                    m.details = fetch_details(m, options)
+                    m.details = fetch_details(m, options, prefix=prefix)
                 except pip.exceptions.InstallationError as e:
                     print("%sERROR: failed detailing '%s'"
                           % (prefix, m), file=sys.stderr)
@@ -362,11 +374,15 @@ def probe(requirements, gathered, options, indent=0):
             if not hasattr(m, 'details'):
                 continue
             print("%sTrying '%s'" % (prefix, m))
-            old_requirements = copy.deepcopy(requirements)
             if m.details['dependencies']:
                 for m_dep in m.details['dependencies']:
                     m_req = pip_req.InstallRequirement.from_line(m_dep)
-                    requirements.setdefault(req_key(m_req), []).append(m_req)
+                    m_req_key = req_key(m_req)
+                    if m_req_key == req_key(pkg_req):
+                        pkg_requirements.append(m_req)
+                    else:
+                        existing_reqs = requirements.setdefault(m_req_key, [])
+                        existing_reqs.append(m_req)
             local_compat = is_compatible_alongside(m, gathered, options,
                                                    prefix=prefix)
             if local_compat:
@@ -395,12 +411,9 @@ def probe(requirements, gathered, options, indent=0):
                       " currently gathered requirements (trying a"
                       " different version)..." % (prefix, req))
                 requirements = old_requirements
-    failed_requirements = []
-    for req in pkg_requirements:
-        if req.req not in failed_requirements:
-            failed_requirements.append(req.req)
+        tried_and_failed.add(pkg_req.req)
     raise RequirementException("failed finding any valid matches"
-                               " for %s" % failed_requirements)
+                               " for %s" % list(tried_and_failed))
 
 
 def main():
