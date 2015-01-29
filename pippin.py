@@ -358,8 +358,8 @@ def probe(requirements, gathered, options, indent=0):
                 except RequirementException as e:
                     if not isinstance(e, PriorRequirementException):
                         print("%sUndoing decision to select '%s' since we"
-                              " %s that work along side it..."
-                              % (prefix, m, e))
+                              " %s that work along side it + the currently"
+                              " gathered requirements..." % (prefix, m, e))
                         write_failure(gathered, options)
                     else:
                         print("%sUndoing decision to select '%s' since we"
