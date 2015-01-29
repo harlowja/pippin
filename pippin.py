@@ -343,9 +343,12 @@ def check_prior_failed(gathered):
                                         " fails in a prior run")
 
 
-def probe(requirements, gathered, options, indent=0):
+def probe(requirements, gathered, options,
+          immediate_requirements=None, indent=0):
     if not requirements:
         return {}
+    if not immediate_requirements:
+        immediate_requirements = {}
 
     def copy_requirements(requirements):
         cloned = {}
@@ -357,6 +360,18 @@ def probe(requirements, gathered, options, indent=0):
     def copy_gathered(gathered):
         return gathered.copy()
 
+    def insert_new_if_not_exists(requirements, m_req):
+        m_req_key = req_key(m_req)
+        existing_reqs = requirements.get(m_req_key, [])
+        already_exists = False
+        for a_req in existing_reqs:
+            if a_req.req == m_req.req:
+                already_exists = True
+                break
+        if not already_exists:
+            existing_reqs = requirements.setdefault(m_req_key, [])
+            existing_reqs.append(m_req)
+
     prefix = " " * indent
     requirements = copy_requirements(requirements)
     gathered = copy_gathered(gathered)
@@ -365,8 +380,12 @@ def probe(requirements, gathered, options, indent=0):
     # requirement) and then recurse trying to get another requirement that
     # will work, if this is not possible, backtrack and try a different
     # version instead (and repeat)...
-    pkg_name, pkg_requirements = requirements.popitem()
+    if immediate_requirements:
+        pkg_name, pkg_requirements = immediate_requirements.popitem()
+    else:
+        pkg_name, pkg_requirements = requirements.popitem()
     tried_and_failed = set()
+    bm_requirements = copy_requirements(requirements)
     while pkg_requirements:
         pkg_req = pkg_requirements.pop(0)
         if pkg_req.req in tried_and_failed:
@@ -379,7 +398,6 @@ def probe(requirements, gathered, options, indent=0):
                                                   prefix=prefix),
                                     options,
                                     prefix=prefix)
-        before_mutation_requirements = copy_requirements(requirements)
         for m in possibles:
             if not hasattr(m, 'details'):
                 try:
@@ -393,12 +411,15 @@ def probe(requirements, gathered, options, indent=0):
             if not hasattr(m, 'details'):
                 continue
             print("%sTrying '%s'" % (prefix, m))
+            # Save this new dependencies requirements and request the next
+            # probing to use that before trying any other requirements...
+            next_immediate_requirements = {}
             if m.details['dependencies']:
                 for m_dep in m.details['dependencies']:
                     m_req = pip_req.InstallRequirement.from_line(m_dep)
-                    m_req_key = req_key(m_req)
-                    existing_reqs = requirements.setdefault(m_req_key, [])
-                    existing_reqs.append(m_req)
+                    insert_new_if_not_exists(requirements, m_req)
+                    insert_new_if_not_exists(next_immediate_requirements,
+                                             m_req)
             local_compat = is_compatible_alongside(m, gathered, options,
                                                    prefix=prefix)
             if local_compat:
@@ -406,8 +427,10 @@ def probe(requirements, gathered, options, indent=0):
                 gathered[pkg_name] = m
                 try:
                     check_prior_failed(gathered)
-                    result = probe(requirements, gathered, options,
-                                   indent=indent+1)
+                    result = probe(
+                        requirements, gathered, options,
+                        indent=indent + 1,
+                        immediate_requirements=next_immediate_requirements)
                 except RequirementException as e:
                     if not isinstance(e, PriorRequirementException):
                         print("%sUndoing decision to select '%s' since we"
@@ -418,7 +441,7 @@ def probe(requirements, gathered, options, indent=0):
                         print("%sUndoing decision to select '%s' since we"
                               " %s..." % (prefix, m, e))
                     gathered.pop(pkg_name)
-                    requirements = before_mutation_requirements
+                    requirements = bm_requirements
                 else:
                     gathered.update(result)
                     return gathered
@@ -426,7 +449,7 @@ def probe(requirements, gathered, options, indent=0):
                 print("%sFailed: '%s' was not found to be compatible with the"
                       " currently gathered requirements (trying a"
                       " different version)..." % (prefix, pkg_req))
-                requirements = before_mutation_requirements
+                requirements = bm_requirements
         tried_and_failed.add(pkg_req.req)
     raise RequirementException("failed finding any valid matches"
                                " for %s" % list(tried_and_failed))
