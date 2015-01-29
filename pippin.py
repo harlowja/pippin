@@ -60,6 +60,10 @@ _KNOWN_FAILURES = set()
 _PROBE_COUNT = 0
 _PROBE_EMIT = 500
 
+# How often certain packages are failing...
+_FAIL_FREQ = collections.defaultdict(int)
+_FAIL_SHOW_AM = 10
+
 # Only select the X prior versions for checking compatiblity if there
 # are many possible versions (this reduces the search space to something
 # more amenable/manageable).
@@ -358,6 +362,22 @@ def check_prior_failed(gathered):
                                         " fails in a prior run (hash %s)"
                                         % gathered_hash)
 
+def print_failure_freqs():
+    if not _FAIL_FREQ:
+        return
+    def sorter(a, b):
+        return cmp(a[1], b[1])
+    collapsed = sorted(list(six.iteritems(_FAIL_FREQ)), cmp=sorter)
+    shown = 0
+    fail_show = min(len(_FAIL_FREQ), _FAIL_SHOW_AM)
+    print("Top %s failures:" % (fail_show))
+    for pkg_name, fails in reversed(collapsed):
+        if shown > fail_show:
+            break
+        print("- %s has failed compatibility checks"
+              " %s times..." % (pkg_name, fails))
+        shown += 1
+
 
 def copy_requirements(requirements):
     cloned = _DICT_CLS()
@@ -398,6 +418,7 @@ def probe(requirements, gathered, options, indent=0):
         if not options.verbose:
             print("Trying probe %s (current depth = %s, left = %s) ..."
                   % (_PROBE_COUNT, indent, len(requirements)))
+            print_failure_freqs()
             print("Please wait...")
 
     tried_and_failed = set()
@@ -443,6 +464,7 @@ def probe(requirements, gathered, options, indent=0):
                         print("%sUndoing decision to select '%s' since we"
                               " %s..." % (prefix, m, e))
                 gathered.pop(pkg_name)
+                _FAIL_FREQ[pkg_name] += 1
             else:
                 gathered.update(result)
                 return gathered
