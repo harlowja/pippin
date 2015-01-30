@@ -23,7 +23,6 @@ except ImportError:
 
 import collections
 import contextlib
-import hashlib
 import json
 import os
 import shutil
@@ -37,7 +36,6 @@ from pip import req as pip_req
 import pkg_resources
 
 import argparse
-import pylru
 import requests
 import six
 from six.moves import urllib
@@ -54,31 +52,14 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
-_KNOWN_FAILURES = pylru.lrucache(20000)
-
-# How many probings we performed (and how often to tell the user what probe
-# we are at)...
-_PROBE_COUNT = 0
-_PROBE_EMIT = 500
-
-# How often certain packages are failing...
-_FAIL_FREQ = collections.defaultdict(int)
-_FAIL_SHOW_AM = 10
 
 # Only select the X prior versions for checking compatiblity if there
 # are many possible versions (this reduces the search space to something
 # more amenable/manageable).
 _MAX_PRIOR_VERSIONS = 3
 
-# Used when creating/copying new requirement dicts...
-_DICT_CLS = OrderedDict
-
 
 class RequirementException(Exception):
-    pass
-
-
-class PriorRequirementException(RequirementException):
     pass
 
 
@@ -183,11 +164,11 @@ def create_parser():
         help="Scratch path (used for caching downloaded data)"
              " [default: %s]" % (os.getcwd()))
     parser.add_argument(
-        "--verbose",
+        "--no-verbose",
         dest="verbose",
-        action='store_true',
-        default=False,
-        help="Enable verbose output")
+        action='store_false',
+        default=True,
+        help="Disable verbose output")
     return parser
 
 
@@ -207,7 +188,7 @@ def download_url_to(url, save_path, options, size=None, prefix=""):
 
 
 def parse_requirements(options):
-    all_requirements = _DICT_CLS()
+    all_requirements = OrderedDict()
     for filename in options.requirements:
         try:
             for req in pip_req.parse_requirements(filename):
@@ -341,97 +322,25 @@ def check_is_compatible_alongside(req, gathered, options, prefix=""):
                                                   other_dep_req, other_req))
 
 
-def hash_gathered(gathered):
-    def sorter(a, b):
-        return cmp(a.key, b.key)
-    all_reqs = []
-    for name, other_req in six.iteritems(gathered):
-        all_reqs.append(other_req.req)
-    all_reqs = sorted(all_reqs, cmp=sorter)
-    buf = six.StringIO()
-    for req in all_reqs:
-        buf.write(req)
-        buf.write("\n")
-    buf = buf.getvalue().strip()
-    return buf, hashlib.md5(buf).hexdigest()
-
-
-def check_prior_failed(gathered):
-    gathered, gathered_hash = hash_gathered(gathered)
-    if gathered_hash in _KNOWN_FAILURES:
-        raise PriorRequirementException("already found this combination"
-                                        " fails in a prior run (hash %s)"
-                                        % gathered_hash)
-
-def print_failure_freqs():
-    if not _FAIL_FREQ:
-        return
-    def sorter(a, b):
-        return cmp(a[1], b[1])
-    collapsed = sorted(list(six.iteritems(_FAIL_FREQ)), cmp=sorter)
-    shown = 0
-    fail_show = min(len(_FAIL_FREQ), _FAIL_SHOW_AM)
-    print("Top %s failures:" % (fail_show))
-    for pkg_name, fails in reversed(collapsed):
-        if shown > fail_show:
-            break
-        print("- %s has failed compatibility checks"
-              " %s times..." % (pkg_name, fails))
-        shown += 1
-
-
-def copy_requirements(requirements):
-    cloned = _DICT_CLS()
-    for pkg_name, pkg_requirements in six.iteritems(requirements):
-        cloned_pkg_requirements = cloned.setdefault(pkg_name, [])
-        cloned_pkg_requirements.extend(pkg_requirements)
-    return cloned
-
-
-def probe(requirements, gathered, options, indent=0):
+def probe(requirements, gathered, options, level=1):
     if not requirements:
-        return _DICT_CLS()
-
-    # Only try to pretty format things with indents... if in verbose mode...
-    if options.verbose:
-        prefix = " " * indent
-    else:
-        prefix = ''
-
-    # Save/clone the requirements/gathred before mutation so that we
-    # can undo any changes without affecting other existing probe calls
-    # references to those same dictionaries (which would be bad)...
-    requirements = copy_requirements(requirements)
+        return gathered
+    # Pick one of the requirements, get a version that works with the
+    # current known siblings (other requirements that are requested along
+    # side this requirement) and then recurse trying to get another
+    # requirement that will work, if this is not possible, backtrack and
+    # try a different version instead (and repeat)...
+    prefix = '%s/%s: ' % (level, level + len(requirements))
     gathered = gathered.copy()
-
-    # Pick one of the requirements, get a version that works with the current
-    # known siblings (other requirements that are requested along side this
-    # requirement) and then recurse trying to get another requirement that
-    # will work, if this is not possible, backtrack and try a different
-    # version instead (and repeat)...
+    requirements = requirements.copy()
     pkg_name, pkg_requirements = requirements.popitem()
-
-    # Track how many probes we have done (and show the user something useful
-    # to know that the program hasn't stalled...)
-    global _PROBE_COUNT
-    _PROBE_COUNT += 1
-    if _PROBE_COUNT > 0 and (_PROBE_COUNT % _PROBE_EMIT == 0):
-        if not options.verbose:
-            print("Trying probe %s (current depth = %s, left = %s) ..."
-                  % (_PROBE_COUNT, indent, len(requirements)))
-            print_failure_freqs()
-            print("Please wait...")
-
-    tried_and_failed = set()
     for pkg_req in pkg_requirements:
-        if options.verbose:
-            print("%sSearching for pypi requirement that matches '%s'"
-                  % (prefix, pkg_req.req))
         possibles = match_available(pkg_req.req,
                                     find_versions(pkg_name, options,
                                                   prefix=prefix),
                                     options,
                                     prefix=prefix)
+        detailed_possibles = []
         for m in possibles:
             if not hasattr(m, 'details'):
                 try:
@@ -444,35 +353,25 @@ def probe(requirements, gathered, options, indent=0):
                         print("%s" % (line), file=sys.stderr)
             if not hasattr(m, 'details'):
                 continue
-            if options.verbose:
-                print("%sPicking '%s'" % (prefix, m))
+            else:
+                detailed_possibles.append(m)
+        for m in detailed_possibles:
             gathered[pkg_name] = m
             try:
-                check_prior_failed(gathered)
                 check_is_compatible_alongside(m, gathered, options,
                                               prefix=prefix)
-                result = probe(requirements, gathered, options,
-                               indent=indent + 1)
+                result = probe(requirements, gathered,
+                               options, level=level + 1)
             except RequirementException as e:
-                if not isinstance(e, PriorRequirementException):
-                    if options.verbose:
-                        print("%sUndoing decision to select '%s' since we"
-                              " %s that work along side it + the currently"
-                              " gathered requirements..." % (prefix, m, e))
-                    _gathered, gathered_hash = hash_gathered(gathered)
-                    _KNOWN_FAILURES[gathered_hash] = True
-                else:
-                    if options.verbose:
-                        print("%sUndoing decision to select '%s' since we"
-                              " %s..." % (prefix, m, e))
+                if options.verbose:
+                    print("%sUndoing decision to select '%s'"
+                          " due to %s" % (prefix, m, e))
                 gathered.pop(pkg_name)
-                _FAIL_FREQ[pkg_name] += 1
             else:
                 gathered.update(result)
                 return gathered
-        tried_and_failed.add(pkg_req.req)
-    raise RequirementException("failed finding any valid matches"
-                               " for %s" % list(tried_and_failed))
+    raise RequirementException("No working requirement found for '%s'"
+                               % pkg_name)
 
 
 def main():
@@ -488,8 +387,9 @@ def main():
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
     print("Probing for a valid set...")
+    matches = OrderedDict()
     try:
-        matches = probe(initial, _DICT_CLS(), options, indent=1)
+        matches = probe(initial, matches, options, level=1)
     except Exception:
         traceback.print_exc(file=sys.stdout)
     else:
