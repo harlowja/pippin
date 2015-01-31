@@ -33,7 +33,8 @@ And wait ;-)
  1. Before this occurs; if no *desired* requirements (aka the *desired*
     requirement set is empty) left we have **finished** (return from
     current probing level).
-1. Find version(s) of ``X`` on pypi that satisify its requirement
+1. Find version(s) of ``X`` (currently only selecting ``sdist``
+   distributions) on pypi that satisify specified requirement
    restrictions (using a cache stored at ``.versions``) via
    the ``http://pypi.python.org/pypi/$pkg_name/json`` API.
 1. Iterate over all versions ``Y`` (ordered from newest version
