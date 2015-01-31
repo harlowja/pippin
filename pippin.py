@@ -349,7 +349,8 @@ def probe(requirements, gathered, options, levels, failures):
     levels = levels[:]
     requirements = requirements.copy()
     pkg_name, pkg_req = requirements.popitem()
-    print("%s: Probing for valid match for %s" % (prefix, pkg_req))
+    if options.verbose:
+        print("%s: Probing for valid match for %s" % (prefix, pkg_req))
     possibles = match_available(pkg_req.req,
                                 find_versions(pkg_name, options,
                                               prefix=prefix),
@@ -387,8 +388,9 @@ def probe(requirements, gathered, options, levels, failures):
             # cause issues...
             if m.details['dependencies']:
                 deep_requirements = OrderedDict()
-                print("%s: Checking if '%s' dependencies are compatible..."
-                      % (prefix, m))
+                if options.verbose:
+                    print("%s: Checking if '%s' dependencies are"
+                          " compatible..." % (prefix, m))
                 # NOTE: not including the active requirements in this
                 # list does limit the scan-space, and may discount
                 # various combinations (especially on failures) but this
