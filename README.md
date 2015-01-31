@@ -60,7 +60,7 @@ And wait ;-)
     * If this ``aborts`` remove ``Y`` from being *picked* and force a new
       version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
-    * If this does **not** ``abort`` return.
+    * If this does **not** ``abort`` **return**.
 
 ##### Example output(s) from actual run(s):
 
