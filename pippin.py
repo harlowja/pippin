@@ -300,6 +300,42 @@ def check_is_compatible_alongside(pkg_req, gathered,
                                               other_req))
 
 
+def generate_prefix(levels):
+    chapters = []
+    tmp_levels = levels[:]
+    while tmp_levels:
+        c = tmp_levels[0]
+        if c in ("p", "d"):
+            if not chapters:
+                chapters.append([c, 1, 0, 0])
+            else:
+                if c == chapters[-1][0]:
+                    chapters[-1][1] += 1
+                else:
+                    chapters.append([c, 1, 0, 0])
+            tmp_levels.pop(0)
+        else:
+            trial = 0
+            max_trials = 0
+            while tmp_levels and tmp_levels[0].startswith("t."):
+                trial += 1
+                max_trials = int(tmp_levels[0][2:])
+                tmp_levels.pop(0)
+            if max_trials:
+                chapters[-1][2] = trial
+                chapters[-1][3] = max_trials
+    prefix = six.StringIO()
+    for i, (kind, count, trials, max_trials) in enumerate(chapters):
+        if max_trials:
+            prefix.write("%s%s.t(%s/%s)" % (kind, count,
+                                            trials, max_trials))
+        else:
+            prefix.write("%s%s" % (kind, count))
+        if i + 1 != len(chapters):
+            prefix.write(".")
+    return prefix.getvalue()
+
+
 def probe(requirements, gathered, options, levels, failures):
     if not requirements:
         return gathered
@@ -308,17 +344,9 @@ def probe(requirements, gathered, options, levels, failures):
     # side this requirement) and then recurse trying to get another
     # requirement that will work, if this is not possible, backtrack and
     # try a different version instead (and repeat)...
-    chapters = []
-    for c in levels:
-        if not chapters:
-            chapters.append([c, 1])
-        else:
-            if c == chapters[-1][0]:
-                chapters[-1][1] += 1
-            else:
-                chapters.append([c, 1])
-    prefix = ' %s' % (".".join("%s%s" % (c, v) for (c, v) in chapters))
+    prefix = ' %s' % (generate_prefix(levels))
     gathered = gathered.copy()
+    levels = levels[:]
     requirements = requirements.copy()
     pkg_name, pkg_req = requirements.popitem()
     print("%s: Probing for valid match for %s" % (prefix, pkg_req))
@@ -327,9 +355,10 @@ def probe(requirements, gathered, options, levels, failures):
                                               prefix=prefix),
                                 options,
                                 prefix=prefix)
-    start_prefix = prefix
     max_possibles = len(possibles)
-    for j, m in enumerate(possibles):
+    for m in possibles:
+        levels.append('t.%s' % max_possibles)
+        prefix = ' %s' % (generate_prefix(levels))
         if m.req in failures:
             continue
         prior_failures = failures.copy()
@@ -347,7 +376,6 @@ def probe(requirements, gathered, options, levels, failures):
         if pkg_name in gathered:
             if m.details['version'] not in gathered[pkg_name].req:
                 continue
-        prefix = start_prefix + "(%s/%s)" % (j + 1, max_possibles)
         gathered[pkg_name] = m
         try:
             check_is_compatible_alongside(m, gathered, options,
