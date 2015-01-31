@@ -182,14 +182,14 @@ def download_url_to(url, save_path, options, size=None, prefix=""):
 
 
 def parse_requirements(options):
-    all_requirements = OrderedDict()
+    requirements = OrderedDict()
     for filename in options.requirements:
         try:
             for req in pip_req.parse_requirements(filename):
-                all_requirements.setdefault(req_key(req), []).append(req)
+                requirements.setdefault(req_key(req), []).append(req)
         except Exception as ex:
             raise IOError("Cannot parse '%s': %s" % (filename, ex))
-    return all_requirements
+    return requirements
 
 
 def find_versions(pkg_name, options, prefix=""):
@@ -287,18 +287,18 @@ def match_available(req, available, options, prefix=""):
 
 
 def check_is_compatible_alongside(pkg_req, gathered,
-                                  options, probe_level=1,
-                                  compat_level=1):
-    prefix = '%s%s:c' % (" " * compat_level, probe_level)
+                                  options, prefix=""):
     if options.verbose:
         print("%s: Checking if '%s' is compatible along-side:" % (prefix,
                                                                   pkg_req))
-        for name, other_req in six.iteritems(gathered):
-            print("%s: - %s==%s" % (prefix, name,
+        for req_name, other_req in six.iteritems(gathered):
+            if req_key(pkg_req) == req_name:
+                continue
+            print("%s: - %s==%s" % (prefix, req_name,
                                     other_req.details['version']))
             for other_dep in other_req.details['dependencies']:
                 print("%s:  + %s" % (prefix, other_dep))
-    # If we conflict with the currently gathred requirements, give up...
+    # If we conflict with the currently gathered requirements, give up...
     for req_name, other_req in six.iteritems(gathered):
         if req_key(pkg_req) == req_name:
             if pkg_req.details['version'] not in other_req.req:
@@ -306,22 +306,10 @@ def check_is_compatible_alongside(pkg_req, gathered,
                                            % (pkg_req.details['name'],
                                               pkg_req.details['version'],
                                               other_req))
-    # Search the versions of this package which will work and now deeply
-    # expand there dependencies to see if any of those cause issues...
-    deep_requirements = OrderedDict()
-    for dep in pkg_req.details['dependencies']:
-        d_req = pip_req.InstallRequirement.from_line(dep)
-        deep_requirements[req_key(d_req)] = [d_req]
-    if deep_requirements:
-        print("%s: Checking if '%s' dependencies are compatible"
-              % (prefix, pkg_req))
-        probe(deep_requirements, gathered,
-              options, probe_level=probe_level+1,
-              compat_level=compat_level)
 
 
 def probe(requirements, gathered, options,
-          probe_level=1, compat_level=1):
+          probe_level=1, probe_probe_level=1):
     if not requirements:
         return gathered
     # Pick one of the requirements, get a version that works with the
@@ -329,7 +317,7 @@ def probe(requirements, gathered, options,
     # side this requirement) and then recurse trying to get another
     # requirement that will work, if this is not possible, backtrack and
     # try a different version instead (and repeat)...
-    prefix = '%s%s:p' % (" " * compat_level, probe_level)
+    prefix = '%s.%s' % (probe_level, probe_probe_level)
     gathered = gathered.copy()
     requirements = requirements.copy()
     pkg_name, pkg_requirements = requirements.popitem()
@@ -356,12 +344,24 @@ def probe(requirements, gathered, options,
             gathered[pkg_name] = m
             try:
                 check_is_compatible_alongside(m, gathered, options,
-                                              probe_level=probe_level,
-                                              compat_level=compat_level+1)
-                result = probe(requirements, gathered,
-                               options,
-                               probe_level=probe_level+1,
-                               compat_level=compat_level)
+                                              prefix=prefix)
+                # Search the versions of this package which will work and now
+                # deeply expand there dependencies to see if any of those
+                # cause issues...
+                result = gathered
+                if m.details['dependencies']:
+                    print("%s: Checking if '%s' dependencies are compatible..."
+                          % (prefix, m))
+                    deep_requirements = OrderedDict()
+                    for dep in m.details['dependencies']:
+                        d_req = pip_req.InstallRequirement.from_line(dep)
+                        deep_requirements[req_key(d_req)] = [d_req]
+                    result = probe(deep_requirements, result,
+                                   options, probe_level=probe_level+1,
+                                   probe_probe_level=probe_probe_level+1)
+                result = probe(requirements, result,
+                               options, probe_level=probe_level+1,
+                               probe_probe_level=probe_probe_level)
             except RequirementException as e:
                 if options.verbose:
                     print("%s: Undoing decision to select '%s'"
