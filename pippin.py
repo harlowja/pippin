@@ -51,7 +51,7 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
-_MAX_PRIOR_VERSIONS = 3
+_MAX_PRIOR_VERSIONS = -1
 
 
 class RequirementException(Exception):
