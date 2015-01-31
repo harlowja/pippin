@@ -356,8 +356,10 @@ def probe(requirements, gathered, options, levels, failures):
                 # list does limit the scan-space, and may discount
                 # various combinations (especially on failures) but this
                 # should be ok enough...
-                for dep in m.details['dependencies']:
-                    d_req = pip_req.InstallRequirement.from_line(dep)
+                for i, dep in enumerate(m.details['dependencies']):
+                    d_req = pip_req.InstallRequirement.from_line(
+                        dep,
+                        comes_from="dependency of %s (entry %s)" % (m, i + 1))
                     deep_requirements[req_key(d_req)] = d_req
                 levels.append('d')
                 try:
