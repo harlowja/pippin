@@ -31,7 +31,7 @@ And wait ;-)
      non-primitive types).
 1. Select a requirement ``X`` from *desired* requirements (and remove it).
  1. Before this occurs; if no *desired* requirements (aka the *desired*
-    requirement set is empty) left we have **finished** (return from
+    requirement set is empty) left we have finished (**return** from
     current probing level).
 1. Find version(s) of ``X`` (currently only selecting ``sdist``
    distributions) on pypi that satisify specified requirement
