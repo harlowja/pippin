@@ -369,7 +369,7 @@ def probe(requirements, gathered, options, levels):
         except RequirementException as e:
             if options.verbose:
                 print("%s: Undoing decision to select '%s'"
-                      " due to %s" % (prefix, m, e))
+                      " due to: %s" % (prefix, m, e))
             gathered.pop(pkg_name)
         else:
             gathered.update(result)
