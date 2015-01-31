@@ -335,7 +335,7 @@ def generate_prefix(levels):
     return prefix.getvalue()
 
 
-def probe(requirements, gathered, options, levels, failures):
+def probe(requirements, gathered, options, levels):
     if not requirements:
         return gathered
     # Pick one of the requirements, get a version that works with the
@@ -360,9 +360,6 @@ def probe(requirements, gathered, options, levels, failures):
         trials += 1
         levels.append('t.%s' % max_possibles)
         prefix = ' %s' % (generate_prefix(levels))
-        if m.req in failures:
-            continue
-        prior_failures = failures.copy()
         if not hasattr(m, 'details'):
             try:
                 m.details = fetch_details(m, options, prefix=prefix)
@@ -402,14 +399,12 @@ def probe(requirements, gathered, options, levels, failures):
                     deep_requirements[req_key(d_req)] = d_req
                 levels.append('d')
                 try:
-                    probe(deep_requirements, gathered,
-                          options, levels, prior_failures)
+                    probe(deep_requirements, gathered, options, levels)
                 finally:
                     levels.pop()
             levels.append('p')
             try:
-                result = probe(requirements, gathered,
-                               options, levels, prior_failures)
+                result = probe(requirements, gathered, options, levels)
             finally:
                 levels.pop()
         except RequirementException as e:
@@ -419,7 +414,6 @@ def probe(requirements, gathered, options, levels, failures):
             gathered.pop(pkg_name)
             if existing_req is not None:
                 gathered[pkg_name] = existing_req
-            prior_failures.add(m.req)
         else:
             for _i in range(0, trials):
                 levels.pop()
@@ -449,9 +443,8 @@ def main():
     print("+ Probing for a valid set...")
     matches = OrderedDict()
     levels = ['p']
-    failures = set()
     try:
-        matches = probe(initial, matches, options, levels, failures)
+        matches = probe(initial, matches, options, levels)
     except Exception:
         traceback.print_exc(file=sys.stdout)
     else:
