@@ -36,7 +36,8 @@ And wait ;-)
 1. Find version(s) of ``X`` on pypi that satisify its requirement
    restrictions (using a cache stored at ``.versions``) via
    the ``http://pypi.python.org/pypi/$pkg_name/json`` API.
-1. Iterate over all versions ``Y`` from the version(s) of ``X`` that
+1. Iterate over all versions ``Y`` (ordered from newest version
+   to oldest version that) from the version(s) of ``X`` that
    were found:
  1. Download version ``Y`` and extract its ``egg-info`` (using a cache
     stored at ``.downloads``).
