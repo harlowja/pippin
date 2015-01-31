@@ -25,7 +25,7 @@ And wait ;-)
 
 1. Extract *desired* requirements from provided requirements files.
 1. Set initially *gathered/matched* requirements to ``{}`` and begin probing.
-1. Clone *desired* requirements and *gathered/matched* requirements.
+1. Clone/copy *desired* requirements and *gathered/matched* requirements.
    * Required to avoid recursion affecting a prior probes
      requirements (needed since python is pass by reference for
      non-primitive types).
