@@ -26,16 +26,33 @@ And wait ;-)
 1. Extract *desired* requirements from provided requirements files.
 1. Set initially gathered/matched requirements to ``{}`` and begin probing.
 1. Select a requirement ``X`` from *desired* requirements (and remove it).
-1. Find version(s) of ``X`` on pypi that satisify its requirement restrictions (using a cache stored at ``.versions``) via the ``http://pypi.python.org/pypi/$pkg_name/json`` API.
-1. Iterate over all versions ``Y`` from the version(s) of ``X`` that were found:
- 1. Download version ``Y`` and extract its ``egg-info`` (using a cache stored at ``.downloads``).
- 1. *Pick* that version ``Y`` (inserting it into the gathered/matched requirements).
- 1. Check that the version ``Y`` of ``X`` selected is compatible along-side the  gathered/matched requirements.
-    * If this ``aborts`` remove ``Y`` from being *picked* and force a new version ``Y`` of ``X`` to be checked (if no versions ``Y`` are left ``abort``).
- 1. Extract that version ``Y`` dependencies (from its previously deteremined ``egg-info``) and create a new requirement set (and recurse at step #3; starting a new probe using a copy of the gathered/matched requirements but with this different *desired* requirement set).
-    * If this ``aborts`` remove ``Y`` from being *picked* and force a new version ``Y`` of ``X`` to be checked (if no versions ``Y`` are left ``abort``).
+ 1. If no *desired* requirements left we have **finished** (return from
+    current probing level).
+1. Find version(s) of ``X`` on pypi that satisify its requirement
+   restrictions (using a cache stored at ``.versions``) via
+   the ``http://pypi.python.org/pypi/$pkg_name/json`` API.
+1. Iterate over all versions ``Y`` from the version(s) of ``X`` that
+   were found:
+ 1. Download version ``Y`` and extract its ``egg-info`` (using a cache
+    stored at ``.downloads``).
+ 1. *Pick* that version ``Y`` (inserting it into the
+    gathered/matched requirements).
+ 1. Check that the version ``Y`` of ``X`` selected is compatible along-side
+    the gathered/matched requirements.
+    * If this ``aborts`` remove ``Y`` from being *picked* and force a
+      new version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
+      left ``abort``).
+ 1. Extract that version ``Y`` dependencies (from its previously
+    deteremined ``egg-info``) and create a new requirement set (and recurse at
+    step #3; starting a new probe using a copy of the gathered/matched
+    requirements but with this different *desired* requirement set).
+    * If this ``aborts`` remove ``Y`` from being *picked* and force a new
+      version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
+      left ``abort``).
  1. Probe deeper by recursing (starting again at step #3)
-    * If this ``aborts`` remove ``Y`` from being *picked* and force a new version ``Y`` of ``X`` to be checked (if no versions ``Y`` are left ``abort``).
+    * If this ``aborts`` remove ``Y`` from being *picked* and force a new
+      version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
+      left ``abort``).
 
 ##### Example output(s) from actual run(s):
 
