@@ -327,7 +327,9 @@ def probe(requirements, gathered, options, levels, failures):
                                               prefix=prefix),
                                 options,
                                 prefix=prefix)
-    for m in possibles:
+    start_prefix = prefix
+    max_possibles = len(possibles)
+    for j, m in enumerate(possibles):
         if m.req in failures:
             continue
         prior_failures = failures.copy()
@@ -345,6 +347,7 @@ def probe(requirements, gathered, options, levels, failures):
         if pkg_name in gathered:
             if m.details['version'] not in gathered[pkg_name].req:
                 continue
+        prefix = start_prefix + "(%s/%s)" % (j + 1, max_possibles)
         gathered[pkg_name] = m
         try:
             check_is_compatible_alongside(m, gathered, options,
