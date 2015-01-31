@@ -308,12 +308,12 @@ def check_is_compatible_alongside(pkg_req, gathered,
                                               other_req))
     # Search the versions of this package which will work and now deeply
     # expand there dependencies to see if any of those cause issues...
+    deep_requirements = OrderedDict()
     for dep in pkg_req.details['dependencies']:
         d_req = pip_req.InstallRequirement.from_line(dep)
-        requirements = {
-            req_key(d_req): [d_req],
-        }
-        probe(requirements, gathered,
+        deep_requirements[req_key(d_req)] = [d_req]
+    if deep_requirements:
+        probe(deep_requirements, gathered,
               options, probe_level=probe_level+1,
               compat_level=compat_level)
 
