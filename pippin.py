@@ -33,7 +33,6 @@ import traceback
 from distutils import version as dist_version
 
 from pip import req as pip_req
-import pkg_resources
 
 import argparse
 import requests
@@ -52,11 +51,6 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
-
-# Only select the X prior versions for checking compatiblity if there
-# are many possible versions (this reduces the search space to something
-# more amenable/manageable).
-_MAX_PRIOR_VERSIONS = 3
 
 
 class RequirementException(Exception):
@@ -126,7 +120,7 @@ def get_archive_details(filename, filesize, options, prefix=""):
         return _EGGS_DETAILED[cache_key]
     except KeyError:
         if options.verbose:
-            print("%sExtracting egg-info from '%s'"
+            print("%s: Extracting egg-info from '%s'"
                   % (prefix, os.path.basename(filename)))
         with tempdir() as a_dir:
             arch_filename = os.path.join(a_dir, os.path.basename(filename))
@@ -176,11 +170,11 @@ def download_url_to(url, save_path, options, size=None, prefix=""):
     if size is not None:
         kb_size = size // 1024
         if options.verbose:
-            print("%sDownloading '%s' (%skB) -> '%s'" % (prefix, url,
-                                                         kb_size, save_path))
+            print("%s: Downloading '%s' (%skB) -> '%s'" % (prefix, url,
+                                                           kb_size, save_path))
     else:
         if options.verbose:
-            print("%sDownloading '%s' -> '%s'" % (prefix, url, save_path))
+            print("%s: Downloading '%s' -> '%s'" % (prefix, url, save_path))
     resp = requests.get(url)
     with open(save_path, 'wb') as fh:
         fh.write(resp.content)
@@ -277,14 +271,12 @@ def match_available(req, available, options, prefix=""):
             line = "%s==%s" % (req.key, v)
             m_req = pip_req.InstallRequirement.from_line(line)
             if options.verbose:
-                print("%sFound '%s' as able to satisfy '%s'"
+                print("%s: Found '%s' as able to satisfy '%s'"
                       % (prefix, m_req, req))
             m_req.origin_url = a.origin_url
             m_req.origin_filename = a.origin_filename
             m_req.origin_size = a.origin_size
             useables.append(m_req)
-            if len(useables) == _MAX_PRIOR_VERSIONS:
-                break
         else:
             looked_in.append(v)
     if not useables:
@@ -294,35 +286,104 @@ def match_available(req, available, options, prefix=""):
         return useables
 
 
-def check_is_compatible_alongside(req, gathered, options, prefix=""):
+def deep_iter_dependencies(pkg_req, chain,
+                           options, prefix=""):
+    for _c in chain:
+        prefix += "."
+    pkg_name = req_key(pkg_req)
+    possibles = match_available(pkg_req.req,
+                                find_versions(pkg_name, options,
+                                              prefix=prefix),
+                                options,
+                                prefix=prefix)
+    for m in possibles:
+        if m.req in chain:
+            continue
+        m_chain = list(chain)
+        m_chain.append(m.req)
+        yield m, m_chain
+        if not hasattr(m, 'details'):
+            try:
+                m.details = fetch_details(m, options, prefix=prefix)
+            except Exception as e:
+                print("ERROR: failed detailing '%s'"
+                      % (m), file=sys.stderr)
+                e_blob = str(e)
+                for line in e_blob.splitlines():
+                    print("%s" % (line), file=sys.stderr)
+        if not hasattr(m, 'details'):
+            continue
+        for other_dep in m.details.get('dependencies', []):
+            d_req = pip_req.InstallRequirement.from_line(other_dep)
+            for d_d_req, d_chain in deep_iter_dependencies(d_req, m_chain,
+                                                           options=options,
+                                                           prefix=prefix):
+                yield d_d_req, d_chain
+
+
+def check_is_compatible_alongside(pkg_req, gathered,
+                                  options, probe_level=1,
+                                  compat_level=1):
+    prefix = '%s:%s (c)' % (probe_level, compat_level)
     if options.verbose:
-        print("%sChecking if '%s' is compatible along-side:" % (prefix, req))
+        print("%s: Checking if '%s' is compatible along-side:" % (prefix,
+                                                                  pkg_req))
         for name, other_req in six.iteritems(gathered):
-            print("%s - %s==%s" % (prefix, name, other_req.details['version']))
+            print("%s: - %s==%s" % (prefix, name,
+                                    other_req.details['version']))
             for other_dep in other_req.details['dependencies']:
-                print("%s  + %s" % (prefix, other_dep))
-    req_details = req.details
-    req = req.req
+                print("%s:  + %s" % (prefix, other_dep))
     for req_name, other_req in six.iteritems(gathered):
-        if req.key == req_name:
-            if req_details['version'] not in other_req.req:
+        # If we conflict with the currently gathred requirements, give up...
+        if req_key(pkg_req) == req_name:
+            if pkg_req.details['version'] not in other_req.req:
                 raise RequirementException("'%s==%s' not in '%s'"
-                                           % (req_details['name'],
-                                              req_details['version'],
+                                           % (pkg_req.details['name'],
+                                              pkg_req.details['version'],
                                               other_req))
-        for other_dep in other_req.details.get('dependencies', []):
-            other_dep_req = pkg_resources.Requirement.parse(other_dep)
-            if other_dep_req.key == req.key:
-                if req_details['version'] not in other_dep_req:
-                    raise RequirementException("'%s==%s' not in '%s'"
-                                               " (required"
-                                               " by '%s')"
-                                               % (req_details['name'],
-                                                  req_details['version'],
-                                                  other_dep_req, other_req))
+    # Search the versions of this package which will work and now deeply
+    # expand there dependencies to see if any of those cause issues...
+    possibles = match_available(pkg_req.req,
+                                find_versions(pkg_req.details['name'],
+                                              options, prefix=prefix),
+                                options,
+                                prefix=prefix)
+    passed = 0
+    for m in possibles:
+        if not hasattr(m, 'details'):
+            try:
+                m.details = fetch_details(m, options,
+                                          prefix=prefix)
+            except Exception as e:
+                print("ERROR: failed detailing '%s'"
+                      % (m), file=sys.stderr)
+                e_blob = str(e)
+                for line in e_blob.splitlines():
+                    print("%s" % (line), file=sys.stderr)
+        if not hasattr(m, 'details'):
+            continue
+        failed = False
+        for dep in m.details['dependencies']:
+            d_req = pip_req.InstallRequirement.from_line(dep)
+            requirements = {
+                req_key(d_req): [d_req],
+            }
+            try:
+                probe(requirements, gathered,
+                      options, probe_level=probe_level+1,
+                      compat_level=compat_level)
+            except RequirementException:
+                failed = True
+                break
+        if not failed:
+            passed += 1
+    if not passed:
+        raise RequirementException("No working requirement found"
+                                   " for '%s'" % pkg_req.details['name'])
 
 
-def probe(requirements, gathered, options, level=1):
+def probe(requirements, gathered, options,
+          probe_level=1, compat_level=1):
     if not requirements:
         return gathered
     # Pick one of the requirements, get a version that works with the
@@ -330,17 +391,18 @@ def probe(requirements, gathered, options, level=1):
     # side this requirement) and then recurse trying to get another
     # requirement that will work, if this is not possible, backtrack and
     # try a different version instead (and repeat)...
-    prefix = '%s/%s: ' % (level, level + len(requirements))
+    prefix = '%s:%s (p)' % (probe_level, compat_level)
     gathered = gathered.copy()
     requirements = requirements.copy()
     pkg_name, pkg_requirements = requirements.popitem()
+    print("%s: Probing for valid match for %s [%s]"
+          % (prefix, pkg_name, ",".join([str(r) for r in pkg_requirements])))
     for pkg_req in pkg_requirements:
         possibles = match_available(pkg_req.req,
                                     find_versions(pkg_name, options,
                                                   prefix=prefix),
                                     options,
                                     prefix=prefix)
-        detailed_possibles = []
         for m in possibles:
             if not hasattr(m, 'details'):
                 try:
@@ -353,18 +415,18 @@ def probe(requirements, gathered, options, level=1):
                         print("%s" % (line), file=sys.stderr)
             if not hasattr(m, 'details'):
                 continue
-            else:
-                detailed_possibles.append(m)
-        for m in detailed_possibles:
             gathered[pkg_name] = m
             try:
                 check_is_compatible_alongside(m, gathered, options,
-                                              prefix=prefix)
+                                              probe_level=probe_level,
+                                              compat_level=compat_level+1)
                 result = probe(requirements, gathered,
-                               options, level=level + 1)
+                               options,
+                               probe_level=probe_level+1,
+                               compat_level=compat_level)
             except RequirementException as e:
                 if options.verbose:
-                    print("%sUndoing decision to select '%s'"
+                    print("%s: Undoing decision to select '%s'"
                           " due to %s" % (prefix, m, e))
                 gathered.pop(pkg_name)
             else:
@@ -389,7 +451,7 @@ def main():
     print("Probing for a valid set...")
     matches = OrderedDict()
     try:
-        matches = probe(initial, matches, options, level=1)
+        matches = probe(initial, matches, options)
     except Exception:
         traceback.print_exc(file=sys.stdout)
     else:
