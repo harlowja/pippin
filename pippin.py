@@ -313,7 +313,7 @@ def probe(requirements, gathered, options, levels):
                 chapters[-1][1] += 1
             else:
                 chapters.append([c, 1])
-    prefix = ' %s' % (".".join(str(v) for (_c, v) in chapters))
+    prefix = ' %s' % (".".join("%s%s" % (c, v) for (c, v) in chapters))
     gathered = gathered.copy()
     requirements = requirements.copy()
     pkg_name, pkg_req = requirements.popitem()
