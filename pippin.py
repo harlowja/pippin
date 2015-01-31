@@ -289,7 +289,7 @@ def match_available(req, available, options, prefix=""):
 def check_is_compatible_alongside(pkg_req, gathered,
                                   options, probe_level=1,
                                   compat_level=1):
-    prefix = '%s:%s (c)' % (probe_level, compat_level)
+    prefix = '%s%s:c' % (" " * compat_level, probe_level)
     if options.verbose:
         print("%s: Checking if '%s' is compatible along-side:" % (prefix,
                                                                   pkg_req))
@@ -313,6 +313,8 @@ def check_is_compatible_alongside(pkg_req, gathered,
         d_req = pip_req.InstallRequirement.from_line(dep)
         deep_requirements[req_key(d_req)] = [d_req]
     if deep_requirements:
+        print("%s: Checking if '%s' dependencies are compatible"
+              % (prefix, pkg_req))
         probe(deep_requirements, gathered,
               options, probe_level=probe_level+1,
               compat_level=compat_level)
@@ -327,7 +329,7 @@ def probe(requirements, gathered, options,
     # side this requirement) and then recurse trying to get another
     # requirement that will work, if this is not possible, backtrack and
     # try a different version instead (and repeat)...
-    prefix = '%s:%s (p)' % (probe_level, compat_level)
+    prefix = '%s%s:p' % (" " * compat_level, probe_level)
     gathered = gathered.copy()
     requirements = requirements.copy()
     pkg_name, pkg_requirements = requirements.popitem()
