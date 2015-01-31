@@ -1,0 +1,500 @@
++ Initial package set:
+ - futures<1.5 (from -r bad.txt (line 2))
+ - taskflow (from -r bad.txt (line 1))
++ Probing for a valid set...
+ p1: Probing for valid match for futures<1.5 (from -r bad.txt (line 2))
+ p1: Found 'futures==1.0' as able to satisfy 'futures<1.5'
+ p1: Found 'futures==0.2' as able to satisfy 'futures<1.5'
+ p1: Found 'futures==0.1' as able to satisfy 'futures<1.5'
+ p1(1/3): Extracting egg-info from 'futures-1.0.tar.gz'
+ p1(1/3): Checking if 'futures==1.0' is compatible along-side:
+ p2(1/3): Probing for valid match for taskflow (from -r bad.txt (line 1))
+ p2(1/3): Found 'taskflow==0.6.1' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.6.0' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.5.0' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.4.0' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.3.21' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.2' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.1.3' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.1.2' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.1.1' as able to satisfy 'taskflow'
+ p2(1/3): Found 'taskflow==0.1' as able to satisfy 'taskflow'
+ p2(1/10): Extracting egg-info from 'taskflow-0.6.1.tar.gz'
+ p2(1/10): Checking if 'taskflow==0.6.1' is compatible along-side:
+ p2(1/10): - futures==1.0
+ p2(1/10): Checking if 'taskflow==0.6.1' dependencies are compatible...
+ p2(1/10).d1: Probing for valid match for oslo.serialization>=1.0.0 (from dependency of taskflow==0.6.1 (entry 9))
+ p2(1/10).d1: Found 'oslo.serialization==1.2.0' as able to satisfy 'oslo.serialization>=1.0.0'
+ p2(1/10).d1: Found 'oslo.serialization==1.1.0' as able to satisfy 'oslo.serialization>=1.0.0'
+ p2(1/10).d1: Found 'oslo.serialization==1.0.0' as able to satisfy 'oslo.serialization>=1.0.0'
+ p2(1/10).d1(1/3): Extracting egg-info from 'oslo.serialization-1.2.0.tar.gz'
+ p2(1/10).d1(1/3): Checking if 'oslo.serialization==1.2.0' is compatible along-side:
+ p2(1/10).d1(1/3): - futures==1.0
+ p2(1/10).d1(1/3): - taskflow==0.6.1
+ p2(1/10).d1(1/3):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d1(1/3):  + ordereddict
+ p2(1/10).d1(1/3):  + six>=1.7.0
+ p2(1/10).d1(1/3):  + networkx>=1.8
+ p2(1/10).d1(1/3):  + stevedore>=1.1.0
+ p2(1/10).d1(1/3):  + futures>=2.1.6
+ p2(1/10).d1(1/3):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d1(1/3):  + oslo.utils>=1.1.0
+ p2(1/10).d1(1/3):  + oslo.serialization>=1.0.0
+ p2(1/10).d1(1/3): Checking if 'oslo.serialization==1.2.0' dependencies are compatible...
+ p2(1/10).d2(1/3): Probing for valid match for oslo.utils>=1.1.0 (from dependency of oslo.serialization==1.2.0 (entry 5))
+ p2(1/10).d2(1/3): Found 'oslo.utils==1.2.1' as able to satisfy 'oslo.utils>=1.1.0'
+ p2(1/10).d2(1/3): Found 'oslo.utils==1.2.0' as able to satisfy 'oslo.utils>=1.1.0'
+ p2(1/10).d2(1/3): Found 'oslo.utils==1.1.1' as able to satisfy 'oslo.utils>=1.1.0'
+ p2(1/10).d2(1/3): Found 'oslo.utils==1.1.0' as able to satisfy 'oslo.utils>=1.1.0'
+ p2(1/10).d2(1/4): Extracting egg-info from 'oslo.utils-1.2.1.tar.gz'
+ p2(1/10).d2(1/4): Checking if 'oslo.utils==1.2.1' is compatible along-side:
+ p2(1/10).d2(1/4): - futures==1.0
+ p2(1/10).d2(1/4): - taskflow==0.6.1
+ p2(1/10).d2(1/4):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d2(1/4):  + ordereddict
+ p2(1/10).d2(1/4):  + six>=1.7.0
+ p2(1/10).d2(1/4):  + networkx>=1.8
+ p2(1/10).d2(1/4):  + stevedore>=1.1.0
+ p2(1/10).d2(1/4):  + futures>=2.1.6
+ p2(1/10).d2(1/4):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d2(1/4):  + oslo.utils>=1.1.0
+ p2(1/10).d2(1/4):  + oslo.serialization>=1.0.0
+ p2(1/10).d2(1/4): - oslo.serialization==1.2.0
+ p2(1/10).d2(1/4):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d2(1/4):  + Babel>=1.3
+ p2(1/10).d2(1/4):  + six>=1.7.0
+ p2(1/10).d2(1/4):  + iso8601>=0.1.9
+ p2(1/10).d2(1/4):  + oslo.utils>=1.1.0
+ p2(1/10).d2(1/4): Checking if 'oslo.utils==1.2.1' dependencies are compatible...
+ p2(1/10).d3(1/4): Probing for valid match for netifaces>=0.10.4 (from dependency of oslo.utils==1.2.1 (entry 7))
+ p2(1/10).d3(1/4): Found 'netifaces==0.10.4' as able to satisfy 'netifaces>=0.10.4'
+ p2(1/10).d3(1/1): Extracting egg-info from 'netifaces-0.10.4.tar.gz'
+ p2(1/10).d3(1/1): Checking if 'netifaces==0.10.4' is compatible along-side:
+ p2(1/10).d3(1/1): - futures==1.0
+ p2(1/10).d3(1/1): - taskflow==0.6.1
+ p2(1/10).d3(1/1):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1):  + ordereddict
+ p2(1/10).d3(1/1):  + six>=1.7.0
+ p2(1/10).d3(1/1):  + networkx>=1.8
+ p2(1/10).d3(1/1):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1):  + futures>=2.1.6
+ p2(1/10).d3(1/1):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1):  + oslo.serialization>=1.0.0
+ p2(1/10).d3(1/1): - oslo.serialization==1.2.0
+ p2(1/10).d3(1/1):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1):  + Babel>=1.3
+ p2(1/10).d3(1/1):  + six>=1.7.0
+ p2(1/10).d3(1/1):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1): - oslo.utils==1.2.1
+ p2(1/10).d3(1/1):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1):  + Babel>=1.3
+ p2(1/10).d3(1/1):  + six>=1.7.0
+ p2(1/10).d3(1/1):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1):  + oslo.i18n>=1.0.0
+ p2(1/10).d3(1/1):  + netaddr>=0.7.12
+ p2(1/10).d3(1/1):  + netifaces>=0.10.4
+ p2(1/10).d3(1/1).p1: Probing for valid match for netaddr>=0.7.12 (from dependency of oslo.utils==1.2.1 (entry 6))
+ p2(1/10).d3(1/1).p1: Found 'netaddr==0.7.13' as able to satisfy 'netaddr>=0.7.12'
+ p2(1/10).d3(1/1).p1: Found 'netaddr==0.7.12' as able to satisfy 'netaddr>=0.7.12'
+ p2(1/10).d3(1/1).p1(1/2): Extracting egg-info from 'netaddr-0.7.13.zip'
+ p2(1/10).d3(1/1).p1(1/2): Checking if 'netaddr==0.7.13' is compatible along-side:
+ p2(1/10).d3(1/1).p1(1/2): - futures==1.0
+ p2(1/10).d3(1/1).p1(1/2): - taskflow==0.6.1
+ p2(1/10).d3(1/1).p1(1/2):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p1(1/2):  + ordereddict
+ p2(1/10).d3(1/1).p1(1/2):  + six>=1.7.0
+ p2(1/10).d3(1/1).p1(1/2):  + networkx>=1.8
+ p2(1/10).d3(1/1).p1(1/2):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1).p1(1/2):  + futures>=2.1.6
+ p2(1/10).d3(1/1).p1(1/2):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1).p1(1/2):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p1(1/2):  + oslo.serialization>=1.0.0
+ p2(1/10).d3(1/1).p1(1/2): - oslo.serialization==1.2.0
+ p2(1/10).d3(1/1).p1(1/2):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p1(1/2):  + Babel>=1.3
+ p2(1/10).d3(1/1).p1(1/2):  + six>=1.7.0
+ p2(1/10).d3(1/1).p1(1/2):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p1(1/2):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p1(1/2): - oslo.utils==1.2.1
+ p2(1/10).d3(1/1).p1(1/2):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p1(1/2):  + Babel>=1.3
+ p2(1/10).d3(1/1).p1(1/2):  + six>=1.7.0
+ p2(1/10).d3(1/1).p1(1/2):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p1(1/2):  + oslo.i18n>=1.0.0
+ p2(1/10).d3(1/1).p1(1/2):  + netaddr>=0.7.12
+ p2(1/10).d3(1/1).p1(1/2):  + netifaces>=0.10.4
+ p2(1/10).d3(1/1).p1(1/2): - netifaces==0.10.4
+ p2(1/10).d3(1/1).p2(1/2): Probing for valid match for oslo.i18n>=1.0.0 (from dependency of oslo.utils==1.2.1 (entry 5))
+ p2(1/10).d3(1/1).p2(1/2): Found 'oslo.i18n==1.3.1' as able to satisfy 'oslo.i18n>=1.0.0'
+ p2(1/10).d3(1/1).p2(1/2): Found 'oslo.i18n==1.3.0' as able to satisfy 'oslo.i18n>=1.0.0'
+ p2(1/10).d3(1/1).p2(1/2): Found 'oslo.i18n==1.2.0' as able to satisfy 'oslo.i18n>=1.0.0'
+ p2(1/10).d3(1/1).p2(1/2): Found 'oslo.i18n==1.1.0' as able to satisfy 'oslo.i18n>=1.0.0'
+ p2(1/10).d3(1/1).p2(1/2): Found 'oslo.i18n==1.0.0' as able to satisfy 'oslo.i18n>=1.0.0'
+ p2(1/10).d3(1/1).p2(1/5): Extracting egg-info from 'oslo.i18n-1.3.1.tar.gz'
+ p2(1/10).d3(1/1).p2(1/5): Checking if 'oslo.i18n==1.3.1' is compatible along-side:
+ p2(1/10).d3(1/1).p2(1/5): - futures==1.0
+ p2(1/10).d3(1/1).p2(1/5): - taskflow==0.6.1
+ p2(1/10).d3(1/1).p2(1/5):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5):  + ordereddict
+ p2(1/10).d3(1/1).p2(1/5):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5):  + networkx>=1.8
+ p2(1/10).d3(1/1).p2(1/5):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5):  + futures>=2.1.6
+ p2(1/10).d3(1/1).p2(1/5):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1).p2(1/5):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5):  + oslo.serialization>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5): - oslo.serialization==1.2.0
+ p2(1/10).d3(1/1).p2(1/5):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5): - oslo.utils==1.2.1
+ p2(1/10).d3(1/1).p2(1/5):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5):  + oslo.i18n>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5):  + netaddr>=0.7.12
+ p2(1/10).d3(1/1).p2(1/5):  + netifaces>=0.10.4
+ p2(1/10).d3(1/1).p2(1/5): - netifaces==0.10.4
+ p2(1/10).d3(1/1).p2(1/5): - netaddr==0.7.13
+ p2(1/10).d3(1/1).p2(1/5): Checking if 'oslo.i18n==1.3.1' dependencies are compatible...
+ p2(1/10).d3(1/1).p2(1/5).d1: Probing for valid match for six>=1.7.0 (from dependency of oslo.i18n==1.3.1 (entry 3))
+ p2(1/10).d3(1/1).p2(1/5).d1: Found 'six==1.9.0' as able to satisfy 'six>=1.7.0'
+ p2(1/10).d3(1/1).p2(1/5).d1: Found 'six==1.8.0' as able to satisfy 'six>=1.7.0'
+ p2(1/10).d3(1/1).p2(1/5).d1: Found 'six==1.7.3' as able to satisfy 'six>=1.7.0'
+ p2(1/10).d3(1/1).p2(1/5).d1: Found 'six==1.7.2' as able to satisfy 'six>=1.7.0'
+ p2(1/10).d3(1/1).p2(1/5).d1: Found 'six==1.7.1' as able to satisfy 'six>=1.7.0'
+ p2(1/10).d3(1/1).p2(1/5).d1: Found 'six==1.7.0' as able to satisfy 'six>=1.7.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): Extracting egg-info from 'six-1.9.0.tar.gz'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): Checking if 'six==1.9.0' is compatible along-side:
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): - futures==1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): - taskflow==0.6.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + ordereddict
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + networkx>=1.8
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + futures>=2.1.6
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + oslo.serialization>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): - oslo.serialization==1.2.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): - oslo.utils==1.2.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + oslo.i18n>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + netaddr>=0.7.12
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + netifaces>=0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): - netifaces==0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): - netaddr==0.7.13
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6): - oslo.i18n==1.3.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1: Probing for valid match for Babel>=1.3 (from dependency of oslo.i18n==1.3.1 (entry 2))
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1: Found 'babel==1.3' as able to satisfy 'Babel>=1.3'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): Extracting egg-info from 'Babel-1.3.tar.gz'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): Checking if 'babel==1.3' is compatible along-side:
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): - futures==1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): - taskflow==0.6.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + ordereddict
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + networkx>=1.8
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + futures>=2.1.6
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + oslo.serialization>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): - oslo.serialization==1.2.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): - oslo.utils==1.2.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + oslo.i18n>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + netaddr>=0.7.12
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + netifaces>=0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): - netifaces==0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): - netaddr==0.7.13
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): - oslo.i18n==1.3.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): - six==1.9.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1): Checking if 'babel==1.3' dependencies are compatible...
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Probing for valid match for pytz>=0a (from dependency of babel==1.3 (entry 1))
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2014.10' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2014.9' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2014.7' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2014.4' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2014.3' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2014.2' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2014.1.1' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2014.1' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2013d' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2013b' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2013.9' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2013.8' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2013.7' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2013.6' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2012j' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2012h' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2012g' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2012f' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2012d' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2012c' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2012b' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011n' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011k' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011j' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011h' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011g' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011e' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011d' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011c' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2011b' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2010o' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2010l' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2010k' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2010h' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2010g' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2010e' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2010b' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009u' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009r' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009p' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009n' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009l' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009j' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009i' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009g' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009f' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009e' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009d' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2009a' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2008i' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2008h' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2008g' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2008c' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2008b' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2008a' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2007k' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2007i' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2007g' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2007f' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2007d' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2007c' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2006p' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2006j' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2006g' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2005r' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2005m' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2005k' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2005i' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2005e' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2005a' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2004d' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2004b.2' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2004b' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1: Found 'pytz==2004a' as able to satisfy 'pytz>=0a'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): Extracting egg-info from 'pytz-2014.10.zip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): Checking if 'pytz==2014.10' is compatible along-side:
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - futures==1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - taskflow==0.6.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + ordereddict
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + networkx>=1.8
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + futures>=2.1.6
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + oslo.serialization>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - oslo.serialization==1.2.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - oslo.utils==1.2.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + oslo.i18n>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + netaddr>=0.7.12
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + netifaces>=0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - netifaces==0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - netaddr==0.7.13
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - oslo.i18n==1.3.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - six==1.9.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74): - babel==1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p1(1/1).d1(1/74):  + pytz>=0a
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Probing for valid match for pbr>=0.6,!=0.7,<1.0 (from dependency of oslo.i18n==1.3.1 (entry 1))
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.10.7' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.10.6' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.10.5' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.10.4' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.10.3' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.10.2' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.10.1' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.10.0' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.9.0' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.8.2' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.8.1' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.8.0' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/1): Found 'pbr==0.6' as able to satisfy 'pbr>=0.6,!=0.7,<1.0'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): Extracting egg-info from 'pbr-0.10.7.tar.gz'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): Checking if 'pbr==0.10.7' is compatible along-side:
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - futures==1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - taskflow==0.6.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + ordereddict
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + networkx>=1.8
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + futures>=2.1.6
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + oslo.serialization>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - oslo.serialization==1.2.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - oslo.utils==1.2.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + oslo.i18n>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + netaddr>=0.7.12
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + netifaces>=0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - netifaces==0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - netaddr==0.7.13
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - oslo.i18n==1.3.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - six==1.9.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): - babel==1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13):  + pytz>=0a
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13): Checking if 'pbr==0.10.7' dependencies are compatible...
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Probing for valid match for pip (from dependency of pbr==0.10.7 (entry 1))
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==6.0.7' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==6.0.6' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==6.0.5' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==6.0.4' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==6.0.3' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==6.0.2' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==6.0.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==6.0' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.5.6' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.5.5' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.5.4' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.5.3' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.5.2' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.5.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.5' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.4.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.4' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.3.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.3' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.2.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.2' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.0.2' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.0.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==1.0' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.8.3' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.8.2' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.8.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.8' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.7.2' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.7.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.7' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.6.3' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.6.2' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.6.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.6' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.5.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.5' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.4' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.3.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.3' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.2.1' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1: Found 'pip==0.2' as able to satisfy 'pip'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): Extracting egg-info from 'pip-6.0.7.tar.gz'
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): Checking if 'pip==6.0.7' is compatible along-side:
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - futures==1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - taskflow==0.6.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + ordereddict
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + networkx>=1.8
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + futures>=2.1.6
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + oslo.serialization>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - oslo.serialization==1.2.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + oslo.utils>=1.1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - oslo.utils==1.2.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + iso8601>=0.1.9
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + oslo.i18n>=1.0.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + netaddr>=0.7.12
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + netifaces>=0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - netifaces==0.10.4
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - netaddr==0.7.13
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - oslo.i18n==1.3.1
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + Babel>=1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + six>=1.7.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - six==1.9.0
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - babel==1.3
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + pytz>=0a
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43): - pbr==0.10.7
+ p2(1/10).d3(1/1).p2(1/5).d1(1/6).p2(1/13).d1(1/43):  + pip
+ p2(1/10).d3(1/1).p3(1/5): Probing for valid match for iso8601>=0.1.9 (from dependency of oslo.utils==1.2.1 (entry 4))
+ p2(1/10).d3(1/1).p3(1/5): Found 'iso8601==0.1.10' as able to satisfy 'iso8601>=0.1.9'
+ p2(1/10).d3(1/1).p3(1/5): Found 'iso8601==0.1.9' as able to satisfy 'iso8601>=0.1.9'
+ p2(1/10).d3(1/1).p3(1/2): Extracting egg-info from 'iso8601-0.1.10.tar.gz'
+ p2(1/10).d3(1/1).p3(1/2): Checking if 'iso8601==0.1.10' is compatible along-side:
+ p2(1/10).d3(1/1).p3(1/2): - futures==1.0
+ p2(1/10).d3(1/1).p3(1/2): - taskflow==0.6.1
+ p2(1/10).d3(1/1).p3(1/2):  + pbr>=0.6,!=0.7,<1.0
+ p2(1/10).d3(1/1).p3(1/2):  + ordereddict
+ p2(1/10).d3(1/1).p3(1/2):  + six>=1.7.0
+ p2(1/10).d3(1/1).p3(1/2):  + networkx>=1.8
+ p2(1/10).d3(1/1).p3(1/2):  + stevedore>=1.1.0
+ p2(1/10).d3(1/1).p3(1/2):  + futures>=2.1.6
+ p2(1/10).d3(1/1).p3(1/2):  + jsonschema>=2.0.0,<3.0.0
+ p2(1/10).d3(1/1).p3(1/2):  + oslo.utils>=1.1.0

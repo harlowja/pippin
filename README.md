@@ -21,8 +21,8 @@ $ python pippin.py  -r requirements/global-requirements.txt
 
 And wait ;)
 
-##### Example output (from an actual run)
+##### Example output(s) from actual run(s):
 
-http://paste.ubuntu.com/9959383/
+See the ``examples`` folder in this source tree.
 
 [1]: http://www.customink.com/designs/stackpip/qvh0-0015-grtw/
