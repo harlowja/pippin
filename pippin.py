@@ -317,7 +317,7 @@ def probe(requirements, gathered, options,
     # side this requirement) and then recurse trying to get another
     # requirement that will work, if this is not possible, backtrack and
     # try a different version instead (and repeat)...
-    prefix = '%s.%s' % (probe_level, probe_probe_level)
+    prefix = ' %s.%s' % (probe_level, probe_probe_level)
     gathered = gathered.copy()
     requirements = requirements.copy()
     pkg_name, pkg_requirements = requirements.popitem()
@@ -379,26 +379,29 @@ def probe(requirements, gathered, options,
 
 
 def main():
+    def req_cmp(a, b):
+        return cmp(req_key(a), req_key(b))
     parser = create_parser()
     options = parser.parse_args()
     if not options.requirements:
         parser.error("At least one requirement file must be provided")
     initial = parse_requirements(options)
-    print("Initial package set:")
+    print("+ Initial package set:")
     dump_requirements(initial)
     for d in ['.download', '.versions']:
         scratch_path = os.path.join(options.scratch, d)
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
-    print("Probing for a valid set...")
+    print("+ Probing for a valid set...")
     matches = OrderedDict()
     try:
         matches = probe(initial, matches, options)
     except Exception:
         traceback.print_exc(file=sys.stdout)
     else:
-        print("Deep package set:")
-        dump_requirements(matches)
+        print("+ Expanded package set:")
+        for r in sorted(list(six.itervalues(matches)), cmp=req_cmp):
+            print("- %s" % r)
 
 
 if __name__ == "__main__":
