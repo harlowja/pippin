@@ -205,7 +205,9 @@ def find_versions(pkg_name, options, prefix=""):
         return _FINDER_LOOKUPS[url]
     version_path = os.path.join(options.scratch,
                                 ".versions", "%s.json" % pkg_name)
+    show_errors = True
     if os.path.exists(version_path):
+        show_errors = False
         with open(version_path, 'rb') as fh:
             resp_data = json.loads(fh.read())
     else:
@@ -221,8 +223,9 @@ def find_versions(pkg_name, options, prefix=""):
                 rel_fn = r['filename']
                 rel_size = r['size']
         if not all([rel, rel_fn, rel_size]):
-            print("ERROR: no sdist found for '%s==%s'"
-                  % (pkg_name, v), file=sys.stderr)
+            if show_errors:
+                print("ERROR: no sdist found for '%s==%s'"
+                      % (pkg_name, v), file=sys.stderr)
             continue
         try:
             m_rel = _MatchedRelease(
@@ -230,8 +233,9 @@ def find_versions(pkg_name, options, prefix=""):
                 rel, rel_fn, rel_size)
             releases.append(m_rel)
         except ValueError:
-            print("ERROR: failed parsing '%s==%s'"
-                  % (pkg_name, v), file=sys.stderr)
+            if show_errors:
+                print("ERROR: failed parsing '%s==%s'"
+                      % (pkg_name, v), file=sys.stderr)
     _FINDER_LOOKUPS[url] = sorted(releases, cmp=sorter)
     return _FINDER_LOOKUPS[url]
 
