@@ -308,8 +308,7 @@ def check_is_compatible_alongside(pkg_req, gathered,
                                               other_req))
 
 
-def probe(requirements, gathered, options,
-          probe_level=1, probe_probe_level=1):
+def probe(requirements, gathered, options, levels):
     if not requirements:
         return gathered
     # Pick one of the requirements, get a version that works with the
@@ -317,7 +316,16 @@ def probe(requirements, gathered, options,
     # side this requirement) and then recurse trying to get another
     # requirement that will work, if this is not possible, backtrack and
     # try a different version instead (and repeat)...
-    prefix = ' %s.%s' % (probe_level, probe_probe_level)
+    chapters = []
+    for c in levels:
+        if not chapters:
+            chapters.append([c, 1])
+        else:
+            if c == chapters[-1][0]:
+                chapters[-1][1] += 1
+            else:
+                chapters.append([c, 1])
+    prefix = ' %s' % (".".join(str(v) for (_c, v) in chapters))
     gathered = gathered.copy()
     requirements = requirements.copy()
     pkg_name, pkg_requirements = requirements.popitem()
@@ -360,12 +368,18 @@ def probe(requirements, gathered, options,
                     for dep in m.details['dependencies']:
                         d_req = pip_req.InstallRequirement.from_line(dep)
                         deep_requirements[req_key(d_req)] = [d_req]
-                    result = probe(deep_requirements, result,
-                                   options, probe_level=probe_level+1,
-                                   probe_probe_level=probe_probe_level+1)
-                result = probe(requirements, result,
-                               options, probe_level=probe_level+1,
-                               probe_probe_level=probe_probe_level)
+                    levels.append('d')
+                    try:
+                        result = probe(deep_requirements, result,
+                                       options, levels)
+                    finally:
+                        levels.pop()
+                levels.append('p')
+                try:
+                    result = probe(requirements, result,
+                                   options, levels)
+                finally:
+                    levels.pop()
             except RequirementException as e:
                 if options.verbose:
                     print("%s: Undoing decision to select '%s'"
@@ -394,8 +408,9 @@ def main():
             os.makedirs(scratch_path)
     print("+ Probing for a valid set...")
     matches = OrderedDict()
+    levels = ['p']
     try:
-        matches = probe(initial, matches, options)
+        matches = probe(initial, matches, options, levels)
     except Exception:
         traceback.print_exc(file=sys.stdout)
     else:
