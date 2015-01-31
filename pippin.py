@@ -51,6 +51,7 @@ _FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
+_MAX_PRIOR_VERSIONS = 3
 
 
 class RequirementException(Exception):
@@ -186,7 +187,11 @@ def parse_requirements(options):
     for filename in options.requirements:
         try:
             for req in pip_req.parse_requirements(filename):
-                requirements.setdefault(req_key(req), []).append(req)
+                if req_key(req) in requirements:
+                    raise ValueError("Currently only one requirement for '%s'"
+                                     " is allowed, merging is not currently"
+                                     " supported" % req_key(req))
+                requirements[req_key(req)] = req
         except Exception as ex:
             raise IOError("Cannot parse '%s': %s" % (filename, ex))
     return requirements
@@ -231,25 +236,6 @@ def find_versions(pkg_name, options, prefix=""):
     return _FINDER_LOOKUPS[url]
 
 
-def dump_requirements(requirements):
-    for k in six.iterkeys(requirements):
-        k_restrictions = []
-        if isinstance(requirements[k], (list, tuple)):
-            for r in requirements[k]:
-                if r.req.specs:
-                    k_restrictions.extend(["".join(s) for s in r.req.specs])
-        else:
-            r = requirements[k]
-            k_restrictions.extend(["".join(s) for s in r.req.specs])
-        if k_restrictions:
-            if len(k_restrictions) == 1:
-                print(" - %s%s" % (k, k_restrictions[0]))
-            else:
-                print(" - %s %s" % (k, k_restrictions))
-        else:
-            print(" - %s" % (k))
-
-
 def fetch_details(req, options, prefix=""):
     origin_filename = req.origin_filename
     origin_url = req.origin_url
@@ -277,6 +263,8 @@ def match_available(req, available, options, prefix=""):
             m_req.origin_filename = a.origin_filename
             m_req.origin_size = a.origin_size
             useables.append(m_req)
+            if len(useables) == _MAX_PRIOR_VERSIONS:
+                break
         else:
             looked_in.append(v)
     if not useables:
@@ -328,68 +316,66 @@ def probe(requirements, gathered, options, levels):
     prefix = ' %s' % (".".join(str(v) for (_c, v) in chapters))
     gathered = gathered.copy()
     requirements = requirements.copy()
-    pkg_name, pkg_requirements = requirements.popitem()
-    print("%s: Probing for valid match for %s [%s]"
-          % (prefix, pkg_name, ",".join([str(r) for r in pkg_requirements])))
-    for pkg_req in pkg_requirements:
-        possibles = match_available(pkg_req.req,
-                                    find_versions(pkg_name, options,
-                                                  prefix=prefix),
-                                    options,
-                                    prefix=prefix)
-        for m in possibles:
-            if not hasattr(m, 'details'):
-                try:
-                    m.details = fetch_details(m, options, prefix=prefix)
-                except Exception as e:
-                    print("ERROR: failed detailing '%s'"
-                          % (m), file=sys.stderr)
-                    e_blob = str(e)
-                    for line in e_blob.splitlines():
-                        print("%s" % (line), file=sys.stderr)
-            if not hasattr(m, 'details'):
-                continue
-            gathered[pkg_name] = m
+    pkg_name, pkg_req = requirements.popitem()
+    print("%s: Probing for valid match for %s" % (prefix, pkg_req))
+    possibles = match_available(pkg_req.req,
+                                find_versions(pkg_name, options,
+                                              prefix=prefix),
+                                options,
+                                prefix=prefix)
+    for m in possibles:
+        if not hasattr(m, 'details'):
             try:
-                check_is_compatible_alongside(m, gathered, options,
-                                              prefix=prefix)
-                # Search the versions of this package which will work and now
-                # deeply expand there dependencies to see if any of those
-                # cause issues...
-                result = gathered
-                if m.details['dependencies']:
-                    print("%s: Checking if '%s' dependencies are compatible..."
-                          % (prefix, m))
-                    # NOTE: not including the active requirements in this
-                    # list does limit the scan-space, and may discount
-                    # various combinations (especially on failures) but this
-                    # should be ok enough...
-                    deep_requirements = OrderedDict()
-                    for dep in m.details['dependencies']:
-                        d_req = pip_req.InstallRequirement.from_line(dep)
-                        deep_requirements[req_key(d_req)] = [d_req]
-                    levels.append('d')
-                    try:
-                        result = probe(deep_requirements, result,
-                                       options, levels)
-                    finally:
-                        levels.pop()
-                levels.append('p')
+                m.details = fetch_details(m, options, prefix=prefix)
+            except Exception as e:
+                print("ERROR: failed detailing '%s'"
+                      % (m), file=sys.stderr)
+                e_blob = str(e)
+                for line in e_blob.splitlines():
+                    print("%s" % (line), file=sys.stderr)
+        if not hasattr(m, 'details'):
+            continue
+        if pkg_name in gathered:
+            if m.details['version'] not in gathered[pkg_name].req:
+                continue
+        gathered[pkg_name] = m
+        try:
+            check_is_compatible_alongside(m, gathered, options,
+                                          prefix=prefix)
+            # Search the versions of this package which will work and now
+            # deeply expand there dependencies to see if any of those
+            # cause issues...
+            if m.details['dependencies']:
+                deep_requirements = OrderedDict()
+                print("%s: Checking if '%s' dependencies are compatible..."
+                      % (prefix, m))
+                # NOTE: not including the active requirements in this
+                # list does limit the scan-space, and may discount
+                # various combinations (especially on failures) but this
+                # should be ok enough...
+                for dep in m.details['dependencies']:
+                    d_req = pip_req.InstallRequirement.from_line(dep)
+                    deep_requirements[req_key(d_req)] = d_req
+                levels.append('d')
                 try:
-                    result = probe(requirements, result,
-                                   options, levels)
+                    probe(deep_requirements, gathered, options, levels)
                 finally:
                     levels.pop()
-            except RequirementException as e:
-                if options.verbose:
-                    print("%s: Undoing decision to select '%s'"
-                          " due to %s" % (prefix, m, e))
-                gathered.pop(pkg_name)
-            else:
-                gathered.update(result)
-                return gathered
+            levels.append('p')
+            try:
+                result = probe(requirements, gathered, options, levels)
+            finally:
+                levels.pop()
+        except RequirementException as e:
+            if options.verbose:
+                print("%s: Undoing decision to select '%s'"
+                      " due to %s" % (prefix, m, e))
+            gathered.pop(pkg_name)
+        else:
+            gathered.update(result)
+            return gathered
     raise RequirementException("No working requirement found for '%s'"
-                               % pkg_name)
+                               % pkg_req)
 
 
 def main():
@@ -400,12 +386,13 @@ def main():
     if not options.requirements:
         parser.error("At least one requirement file must be provided")
     initial = parse_requirements(options)
-    print("+ Initial package set:")
-    dump_requirements(initial)
     for d in ['.download', '.versions']:
         scratch_path = os.path.join(options.scratch, d)
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
+    print("+ Initial package set:")
+    for r in sorted(list(six.itervalues(initial)), cmp=req_cmp):
+        print(" - %s" % r)
     print("+ Probing for a valid set...")
     matches = OrderedDict()
     levels = ['p']
