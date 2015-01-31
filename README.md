@@ -78,7 +78,7 @@ optional arguments:
                         requirements file
   -s <path>, --scratch <path>
                         Scratch path (used for caching downloaded data)
-                        [default: /home/josh/pippin]
+                        [default: $CWD]
   --no-verbose          Disable verbose output
 ```
 
