@@ -373,9 +373,11 @@ def probe(requirements, gathered, options, levels, failures):
                     print("%s" % (line), file=sys.stderr)
         if not hasattr(m, 'details'):
             continue
+        existing_req = None
         if pkg_name in gathered:
             if m.details['version'] not in gathered[pkg_name].req:
                 continue
+            existing_req = gathered[pkg_name]
         gathered[pkg_name] = m
         try:
             check_is_compatible_alongside(m, gathered, options,
@@ -413,6 +415,8 @@ def probe(requirements, gathered, options, levels, failures):
                 print("%s: Undoing decision to select '%s'"
                       " due to: %s" % (prefix, m, e))
             gathered.pop(pkg_name)
+            if existing_req is not None:
+                gathered[pkg_name] = existing_req
             prior_failures.add(m.req)
         else:
             gathered.update(result)
