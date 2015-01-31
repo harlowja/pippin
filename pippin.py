@@ -296,7 +296,7 @@ def check_is_compatible_alongside(pkg_req, gathered,
                                               other_req))
 
 
-def probe(requirements, gathered, options, levels):
+def probe(requirements, gathered, options, levels, failures):
     if not requirements:
         return gathered
     # Pick one of the requirements, get a version that works with the
@@ -324,6 +324,9 @@ def probe(requirements, gathered, options, levels):
                                 options,
                                 prefix=prefix)
     for m in possibles:
+        if m.req in failures:
+            continue
+        prior_failures = failures.copy()
         if not hasattr(m, 'details'):
             try:
                 m.details = fetch_details(m, options, prefix=prefix)
@@ -358,12 +361,14 @@ def probe(requirements, gathered, options, levels):
                     deep_requirements[req_key(d_req)] = d_req
                 levels.append('d')
                 try:
-                    probe(deep_requirements, gathered, options, levels)
+                    probe(deep_requirements, gathered,
+                          options, levels, prior_failures)
                 finally:
                     levels.pop()
             levels.append('p')
             try:
-                result = probe(requirements, gathered, options, levels)
+                result = probe(requirements, gathered,
+                               options, levels, prior_failures)
             finally:
                 levels.pop()
         except RequirementException as e:
@@ -371,6 +376,7 @@ def probe(requirements, gathered, options, levels):
                 print("%s: Undoing decision to select '%s'"
                       " due to: %s" % (prefix, m, e))
             gathered.pop(pkg_name)
+            prior_failures.add(m.req)
         else:
             gathered.update(result)
             return gathered
@@ -396,8 +402,9 @@ def main():
     print("+ Probing for a valid set...")
     matches = OrderedDict()
     levels = ['p']
+    failures = set()
     try:
-        matches = probe(initial, matches, options, levels)
+        matches = probe(initial, matches, options, levels, failures)
     except Exception:
         traceback.print_exc(file=sys.stdout)
     else:
