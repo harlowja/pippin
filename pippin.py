@@ -352,6 +352,10 @@ def probe(requirements, gathered, options,
                 if m.details['dependencies']:
                     print("%s: Checking if '%s' dependencies are compatible..."
                           % (prefix, m))
+                    # NOTE: not including the active requirements in this
+                    # list does limit the scan-space, and may discount
+                    # various combinations (especially on failures) but this
+                    # should be ok enough...
                     deep_requirements = OrderedDict()
                     for dep in m.details['dependencies']:
                         d_req = pip_req.InstallRequirement.from_line(dep)
