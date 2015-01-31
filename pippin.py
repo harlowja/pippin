@@ -298,6 +298,16 @@ def check_is_compatible_alongside(pkg_req, gathered,
                                            % (pkg_req.details['name'],
                                               pkg_req.details['version'],
                                               other_req))
+        for i, dep in enumerate(other_req.details['dependencies']):
+            d_req = pip_req.InstallRequirement.from_line(
+                dep,
+                comes_from="dependency of %s (entry %s)" % (other_req, i + 1))
+            if req_key(pkg_req) == req_key(d_req):
+                if pkg_req.details['version'] not in d_req.req:
+                    raise RequirementException("'%s==%s' not in '%s'"
+                                               % (pkg_req.details['name'],
+                                                  pkg_req.details['version'],
+                                                  d_req))
 
 
 def generate_prefix(levels):
