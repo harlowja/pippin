@@ -286,41 +286,6 @@ def match_available(req, available, options, prefix=""):
         return useables
 
 
-def deep_iter_dependencies(pkg_req, chain,
-                           options, prefix=""):
-    for _c in chain:
-        prefix += "."
-    pkg_name = req_key(pkg_req)
-    possibles = match_available(pkg_req.req,
-                                find_versions(pkg_name, options,
-                                              prefix=prefix),
-                                options,
-                                prefix=prefix)
-    for m in possibles:
-        if m.req in chain:
-            continue
-        m_chain = list(chain)
-        m_chain.append(m.req)
-        yield m, m_chain
-        if not hasattr(m, 'details'):
-            try:
-                m.details = fetch_details(m, options, prefix=prefix)
-            except Exception as e:
-                print("ERROR: failed detailing '%s'"
-                      % (m), file=sys.stderr)
-                e_blob = str(e)
-                for line in e_blob.splitlines():
-                    print("%s" % (line), file=sys.stderr)
-        if not hasattr(m, 'details'):
-            continue
-        for other_dep in m.details.get('dependencies', []):
-            d_req = pip_req.InstallRequirement.from_line(other_dep)
-            for d_d_req, d_chain in deep_iter_dependencies(d_req, m_chain,
-                                                           options=options,
-                                                           prefix=prefix):
-                yield d_d_req, d_chain
-
-
 def check_is_compatible_alongside(pkg_req, gathered,
                                   options, probe_level=1,
                                   compat_level=1):
