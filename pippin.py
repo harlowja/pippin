@@ -243,11 +243,11 @@ def dump_requirements(requirements):
             k_restrictions.extend(["".join(s) for s in r.req.specs])
         if k_restrictions:
             if len(k_restrictions) == 1:
-                print("- %s%s" % (k, k_restrictions[0]))
+                print(" - %s%s" % (k, k_restrictions[0]))
             else:
-                print("- %s %s" % (k, k_restrictions))
+                print(" - %s %s" % (k, k_restrictions))
         else:
-            print("- %s" % (k))
+            print(" - %s" % (k))
 
 
 def fetch_details(req, options, prefix=""):
@@ -416,7 +416,7 @@ def main():
     else:
         print("+ Expanded package set:")
         for r in sorted(list(six.itervalues(matches)), cmp=req_cmp):
-            print("- %s" % r)
+            print(" - %s" % r)
 
 
 if __name__ == "__main__":
