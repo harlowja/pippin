@@ -327,8 +327,7 @@ def generate_prefix(levels):
     prefix = six.StringIO()
     for i, (kind, count, trials, max_trials) in enumerate(chapters):
         if max_trials:
-            prefix.write("%s%s.t(%s/%s)" % (kind, count,
-                                            trials, max_trials))
+            prefix.write("%s%s(%s/%s)" % (kind, count, trials, max_trials))
         else:
             prefix.write("%s%s" % (kind, count))
         if i + 1 != len(chapters):
@@ -346,7 +345,6 @@ def probe(requirements, gathered, options, levels, failures):
     # try a different version instead (and repeat)...
     prefix = ' %s' % (generate_prefix(levels))
     gathered = gathered.copy()
-    levels = levels[:]
     requirements = requirements.copy()
     pkg_name, pkg_req = requirements.popitem()
     if options.verbose:
@@ -357,7 +355,9 @@ def probe(requirements, gathered, options, levels, failures):
                                 options,
                                 prefix=prefix)
     max_possibles = len(possibles)
+    trials = 0
     for m in possibles:
+        trials += 1
         levels.append('t.%s' % max_possibles)
         prefix = ' %s' % (generate_prefix(levels))
         if m.req in failures:
@@ -421,8 +421,12 @@ def probe(requirements, gathered, options, levels, failures):
                 gathered[pkg_name] = existing_req
             prior_failures.add(m.req)
         else:
+            for _i in range(0, trials):
+                levels.pop()
             gathered.update(result)
             return gathered
+    for _i in range(0, trials):
+        levels.pop()
     raise RequirementException("No working requirement found for '%s'"
                                % pkg_req)
 
