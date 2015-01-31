@@ -333,8 +333,8 @@ def check_is_compatible_alongside(pkg_req, gathered,
                                     other_req.details['version']))
             for other_dep in other_req.details['dependencies']:
                 print("%s:  + %s" % (prefix, other_dep))
+    # If we conflict with the currently gathred requirements, give up...
     for req_name, other_req in six.iteritems(gathered):
-        # If we conflict with the currently gathred requirements, give up...
         if req_key(pkg_req) == req_name:
             if pkg_req.details['version'] not in other_req.req:
                 raise RequirementException("'%s==%s' not in '%s'"
@@ -343,43 +343,14 @@ def check_is_compatible_alongside(pkg_req, gathered,
                                               other_req))
     # Search the versions of this package which will work and now deeply
     # expand there dependencies to see if any of those cause issues...
-    possibles = match_available(pkg_req.req,
-                                find_versions(pkg_req.details['name'],
-                                              options, prefix=prefix),
-                                options,
-                                prefix=prefix)
-    passed = 0
-    for m in possibles:
-        if not hasattr(m, 'details'):
-            try:
-                m.details = fetch_details(m, options,
-                                          prefix=prefix)
-            except Exception as e:
-                print("ERROR: failed detailing '%s'"
-                      % (m), file=sys.stderr)
-                e_blob = str(e)
-                for line in e_blob.splitlines():
-                    print("%s" % (line), file=sys.stderr)
-        if not hasattr(m, 'details'):
-            continue
-        failed = False
-        for dep in m.details['dependencies']:
-            d_req = pip_req.InstallRequirement.from_line(dep)
-            requirements = {
-                req_key(d_req): [d_req],
-            }
-            try:
-                probe(requirements, gathered,
-                      options, probe_level=probe_level+1,
-                      compat_level=compat_level)
-            except RequirementException:
-                failed = True
-                break
-        if not failed:
-            passed += 1
-    if not passed:
-        raise RequirementException("No working requirement found"
-                                   " for '%s'" % pkg_req.details['name'])
+    for dep in pkg_req.details['dependencies']:
+        d_req = pip_req.InstallRequirement.from_line(dep)
+        requirements = {
+            req_key(d_req): [d_req],
+        }
+        probe(requirements, gathered,
+              options, probe_level=probe_level+1,
+              compat_level=compat_level)
 
 
 def probe(requirements, gathered, options,
