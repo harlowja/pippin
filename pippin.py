@@ -411,6 +411,9 @@ def probe(requirements, gathered, options, levels):
         try:
             check_is_compatible_alongside(m, gathered, options,
                                           prefix=prefix)
+            # If we could merge the deep dependencies into the current
+            # requirements this would probably save a bunch of useless
+            # recursion...
             deep_gathered = deep_prope(m, gathered, options, levels,
                                        prefix=prefix)
             levels.append('p')
