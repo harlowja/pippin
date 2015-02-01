@@ -212,10 +212,11 @@ def find_versions(pkg_name, options, prefix=""):
         pypi = PyPIJson(real_pkg_name, fast=True)
         pypi_data = pypi.retrieve()
         pkg_data = {}
-        for version, rel_urls in six.iteritems(pypi_data.get('releases', {})):
-            if not rel_urls:
+        for version, release_urls in six.iteritems(pypi_data.get('releases',
+                                                                 {})):
+            if not release_urls:
                 continue
-            pkg_data[version] = rel_urls
+            pkg_data[version] = release_urls
         if not pkg_data:
             raise ValueError("No pypi package release information for"
                              " '%s' found" % pkg_name)
