@@ -350,7 +350,7 @@ def generate_prefix(levels):
     return prefix.getvalue()
 
 
-def dep_prope(req, gathered, options, levels, prefix=""):
+def deep_prope(req, gathered, options, levels, prefix=""):
     deep_requirements = OrderedDict()
     if options.verbose:
         print("%s: Checking if '%s' dependencies are"
@@ -411,8 +411,8 @@ def probe(requirements, gathered, options, levels):
         try:
             check_is_compatible_alongside(m, gathered, options,
                                           prefix=prefix)
-            deep_gathered = dep_prope(m, gathered, options, levels,
-                                      prefix=prefix)
+            deep_gathered = deep_prope(m, gathered, options, levels,
+                                       prefix=prefix)
             levels.append('p')
             try:
                 compat_gathered = probe(requirements,
