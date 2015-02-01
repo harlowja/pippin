@@ -61,9 +61,13 @@ And wait ;-)
     * If this ``aborts`` remove ``Y`` from being *picked* and force a new
       version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
-    * If this does **not** ``abort`` merge *gathered/matched* 
-      requirements result from deeper probing into local *gathered/matched*
-      requirements and **return** it.
+    * If this does **not** ``abort``:
+       * Repeat prior step (extract that version ``Y`` dependencies...)
+         with *gathered/matched* requirements resulting from
+         deeper probe.
+       * If this does **not** ``abort`` merge *gathered/matched*
+         requirements result from deeper probing into local *gathered/matched*
+         requirements and **return** it.
 
 ##### Example output(s) from actual run(s):
 
