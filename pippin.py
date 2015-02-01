@@ -184,7 +184,8 @@ def parse_requirements(options):
     requirements = OrderedDict()
     for filename in options.requirements:
         try:
-            for req in pip_req.parse_requirements(filename):
+            entries = list(pip_req.parse_requirements(filename))
+            for req in reversed(entries):
                 if req_key(req) in requirements:
                     raise ValueError("Currently only one requirement for '%s'"
                                      " is allowed, merging is not currently"
@@ -355,11 +356,13 @@ def deep_prope(req, gathered, options, levels, prefix=""):
     if options.verbose:
         print("%s: Checking if '%s' dependencies are"
               " compatible..." % (prefix, req))
-    for i, dep in enumerate(req.details['dependencies']):
+    dep_count = len(req.details['dependencies'])
+    for dep in reversed(req.details['dependencies']):
         d_req = pip_req.InstallRequirement.from_line(
             dep,
-            comes_from="dependency of %s (entry %s)" % (req, i + 1))
+            comes_from="dependency of %s (entry %s)" % (req, dep_count))
         deep_requirements[req_key(d_req)] = d_req
+        dep_count -= 1
     levels.append('d')
     try:
         return probe(deep_requirements, gathered, options, levels)
