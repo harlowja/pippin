@@ -350,6 +350,27 @@ def generate_prefix(levels):
     return prefix.getvalue()
 
 
+def dep_prope(req, gathered, options, levels, prefix="", second_round=False):
+    deep_requirements = OrderedDict()
+    if options.verbose:
+        if second_round:
+            print("%s: Checking if '%s' dependencies are still"
+                  " compatible..." % (prefix, req))
+        else:
+            print("%s: Checking if '%s' dependencies are"
+                  " compatible..." % (prefix, req))
+    for i, dep in enumerate(req.details['dependencies']):
+        d_req = pip_req.InstallRequirement.from_line(
+            dep,
+            comes_from="dependency of %s (entry %s)" % (req, i + 1))
+        deep_requirements[req_key(d_req)] = d_req
+    levels.append('d')
+    try:
+        return probe(deep_requirements, gathered, options, levels)
+    finally:
+        levels.pop()
+
+
 def probe(requirements, gathered, options, levels):
     if not requirements:
         return gathered
@@ -369,11 +390,10 @@ def probe(requirements, gathered, options, levels):
                                               prefix=prefix),
                                 options,
                                 prefix=prefix)
-    max_possibles = len(possibles)
     trials = 0
     for m in possibles:
         trials += 1
-        levels.append('t.%s' % max_possibles)
+        levels.append('t.%s' % len(possibles))
         prefix = ' %s' % (generate_prefix(levels))
         if not hasattr(m, 'details'):
             try:
@@ -395,33 +415,16 @@ def probe(requirements, gathered, options, levels):
         try:
             check_is_compatible_alongside(m, gathered, options,
                                           prefix=prefix)
-            # Search the versions of this package which will work and now
-            # deeply expand there dependencies to see if any of those
-            # cause issues...
-            if m.details['dependencies']:
-                deep_requirements = OrderedDict()
-                if options.verbose:
-                    print("%s: Checking if '%s' dependencies are"
-                          " compatible..." % (prefix, m))
-                # NOTE: not including the active requirements in this
-                # list does limit the scan-space, and may discount
-                # various combinations (especially on failures) but this
-                # should be ok enough...
-                for i, dep in enumerate(m.details['dependencies']):
-                    d_req = pip_req.InstallRequirement.from_line(
-                        dep,
-                        comes_from="dependency of %s (entry %s)" % (m, i + 1))
-                    deep_requirements[req_key(d_req)] = d_req
-                levels.append('d')
-                try:
-                    probe(deep_requirements, gathered, options, levels)
-                finally:
-                    levels.pop()
+            dep_prope(m, gathered, options, levels,
+                      prefix=prefix, second_round=False)
             levels.append('p')
             try:
-                result = probe(requirements, gathered, options, levels)
+                compat_gathered = probe(requirements,
+                                        gathered, options, levels)
             finally:
                 levels.pop()
+            dep_prope(m, compat_gathered, options, levels,
+                      prefix=prefix, second_round=True)
         except RequirementException as e:
             if options.verbose:
                 print("%s: Undoing decision to select '%s'"
@@ -432,7 +435,7 @@ def probe(requirements, gathered, options, levels):
         else:
             for _i in range(0, trials):
                 levels.pop()
-            gathered.update(result)
+            gathered.update(compat_gathered)
             return gathered
     for _i in range(0, trials):
         levels.pop()
