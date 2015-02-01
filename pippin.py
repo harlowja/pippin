@@ -350,15 +350,11 @@ def generate_prefix(levels):
     return prefix.getvalue()
 
 
-def dep_prope(req, gathered, options, levels, prefix="", second_round=False):
+def dep_prope(req, gathered, options, levels, prefix=""):
     deep_requirements = OrderedDict()
     if options.verbose:
-        if second_round:
-            print("%s: Checking if '%s' dependencies are still"
-                  " compatible..." % (prefix, req))
-        else:
-            print("%s: Checking if '%s' dependencies are"
-                  " compatible..." % (prefix, req))
+        print("%s: Checking if '%s' dependencies are"
+              " compatible..." % (prefix, req))
     for i, dep in enumerate(req.details['dependencies']):
         d_req = pip_req.InstallRequirement.from_line(
             dep,
@@ -415,16 +411,14 @@ def probe(requirements, gathered, options, levels):
         try:
             check_is_compatible_alongside(m, gathered, options,
                                           prefix=prefix)
-            dep_prope(m, gathered, options, levels,
-                      prefix=prefix, second_round=False)
+            deep_gathered = dep_prope(m, gathered, options, levels,
+                                      prefix=prefix)
             levels.append('p')
             try:
                 compat_gathered = probe(requirements,
-                                        gathered, options, levels)
+                                        deep_gathered, options, levels)
             finally:
                 levels.pop()
-            dep_prope(m, compat_gathered, options, levels,
-                      prefix=prefix, second_round=True)
         except RequirementException as e:
             if options.verbose:
                 print("%s: Undoing decision to select '%s'"
