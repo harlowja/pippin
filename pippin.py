@@ -47,9 +47,8 @@ except ImportError:
     from pip import utils as pip_util  # noqa
 
 
-# Egg info cache and url fetch caches...
+# Egg info caches (since it can be expensive to recompute...)
 _EGGS_DETAILED = {}
-_FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
 
 
@@ -199,8 +198,6 @@ def parse_requirements(options):
 def find_versions(pkg_name, options, prefix=""):
     def sorter(r1, r2):
         return cmp(r1[1], r2[1])
-    if pkg_name in _FINDER_LOOKUPS:
-        return _FINDER_LOOKUPS[pkg_name]
     version_path = os.path.join(options.scratch,
                                 ".versions", "%s.json" % pkg_name)
     show_errors = True
@@ -246,8 +243,7 @@ def find_versions(pkg_name, options, prefix=""):
             if show_errors:
                 print("ERROR: failed parsing '%s==%s'"
                       % (pkg_name, version), file=sys.stderr)
-    _FINDER_LOOKUPS[pkg_name] = sorted(releases, cmp=sorter)
-    return _FINDER_LOOKUPS[pkg_name]
+    return sorted(releases, cmp=sorter)
 
 
 def fetch_details(req, options, prefix=""):
