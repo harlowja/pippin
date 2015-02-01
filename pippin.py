@@ -34,10 +34,12 @@ from distutils import version as dist_version
 
 from pip import req as pip_req
 
+from pkgtools.pypi import PyPIXmlRpc
+from pkgtools.pypi import real_name as pypi_real_name
+
 import argparse
 import requests
 import six
-from six.moves import urllib
 
 try:
     from pip import util as pip_util  # noqa
@@ -45,13 +47,10 @@ except ImportError:
     from pip import utils as pip_util  # noqa
 
 
-_FINDER_URL_TPL = 'http://pypi.python.org/pypi/%s/json'
-
 # Egg info cache and url fetch caches...
 _EGGS_DETAILED = {}
 _FINDER_LOOKUPS = {}
 _EGGS_FAILED_DETAILED = {}
-_MAX_PRIOR_VERSIONS = -1
 
 
 class RequirementException(Exception):
@@ -200,24 +199,42 @@ def parse_requirements(options):
 def find_versions(pkg_name, options, prefix=""):
     def sorter(r1, r2):
         return cmp(r1[1], r2[1])
-    url = _FINDER_URL_TPL % (urllib.parse.quote(pkg_name))
-    if url in _FINDER_LOOKUPS:
-        return _FINDER_LOOKUPS[url]
+    if pkg_name in _FINDER_LOOKUPS:
+        return _FINDER_LOOKUPS[pkg_name]
     version_path = os.path.join(options.scratch,
                                 ".versions", "%s.json" % pkg_name)
     show_errors = True
     if os.path.exists(version_path):
         show_errors = False
         with open(version_path, 'rb') as fh:
-            resp_data = json.loads(fh.read())
+            pkg_data = json.loads(fh.read())
     else:
-        resp_data = json.loads(download_url_to(url,
-                                               version_path,
-                                               options, prefix=prefix))
+        real_pkg_name = pypi_real_name(pkg_name)
+        if not real_pkg_name:
+            raise ValueError("No pypi package named '%s' found" % pkg_name)
+        pypi = PyPIXmlRpc()
+        pkg_data = {}
+        for version in pypi.package_releases(real_pkg_name, True):
+            rel_urls = []
+            for tmp_rel_url in pypi.release_urls(real_pkg_name, version):
+                if not tmp_rel_url:
+                    continue
+                # Can't json serialize these...
+                for k in ['upload_time']:
+                    tmp_rel_url.pop(k, None)
+                rel_urls.append(tmp_rel_url)
+            if not rel_urls:
+                continue
+            pkg_data[version] = rel_urls
+        if not pkg_data:
+            raise ValueError("No pypi package release information for"
+                             " '%s' found" % pkg_name)
+        with open(version_path, 'wb') as fh:
+            fh.write(json.dumps(pkg_data, indent=4))
     releases = []
-    for v, release_infos in six.iteritems(resp_data['releases']):
+    for version, release_urls in six.iteritems(pkg_data):
         rel = rel_fn = rel_size = None
-        for r in release_infos:
+        for r in release_urls:
             if r['packagetype'] == 'sdist':
                 rel = r['url']
                 rel_fn = r['filename']
@@ -225,19 +242,19 @@ def find_versions(pkg_name, options, prefix=""):
         if not all([rel, rel_fn, rel_size]):
             if show_errors:
                 print("ERROR: no sdist found for '%s==%s'"
-                      % (pkg_name, v), file=sys.stderr)
+                      % (pkg_name, version), file=sys.stderr)
             continue
         try:
             m_rel = _MatchedRelease(
-                v, dist_version.LooseVersion(v),
+                version, dist_version.LooseVersion(version),
                 rel, rel_fn, rel_size)
             releases.append(m_rel)
         except ValueError:
             if show_errors:
                 print("ERROR: failed parsing '%s==%s'"
-                      % (pkg_name, v), file=sys.stderr)
-    _FINDER_LOOKUPS[url] = sorted(releases, cmp=sorter)
-    return _FINDER_LOOKUPS[url]
+                      % (pkg_name, version), file=sys.stderr)
+    _FINDER_LOOKUPS[pkg_name] = sorted(releases, cmp=sorter)
+    return _FINDER_LOOKUPS[pkg_name]
 
 
 def fetch_details(req, options, prefix=""):
@@ -267,8 +284,6 @@ def match_available(req, available, options, prefix=""):
             m_req.origin_filename = a.origin_filename
             m_req.origin_size = a.origin_size
             useables.append(m_req)
-            if len(useables) == _MAX_PRIOR_VERSIONS:
-                break
         else:
             looked_in.append(v)
     if not useables:

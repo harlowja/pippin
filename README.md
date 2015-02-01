@@ -16,7 +16,7 @@ Run like:
 
 ```
 $ git clone git://git.openstack.org/openstack/requirements
-$ python pippin.py  -r requirements/global-requirements.txt
+$ python pippin.py -r requirements/global-requirements.txt
 ```
 
 And wait ;-)
@@ -37,7 +37,7 @@ And wait ;-)
 1. Find version(s) of ``X`` (currently only selecting ``sdist``
    distributions) on pypi that satisify specified requirement
    restrictions (using a cache stored at ``.versions``) via
-   the ``http://pypi.python.org/pypi/$pkg_name/json`` API.
+   the ``pkg_tools.pypi`` API(s) [2].
 1. Iterate over all versions ``Y`` (ordered from newest version
    to oldest version) from the version(s) of ``X`` that
    were found:
@@ -91,3 +91,4 @@ optional arguments:
 * Likely only works in python 2.6 or 2.7 (until further notice).
 
 [1]: http://www.customink.com/designs/stackpip/qvh0-0015-grtw/
+[2]: http://pkgtools.readthedocs.org
