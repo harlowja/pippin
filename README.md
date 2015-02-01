@@ -68,6 +68,9 @@ And wait ;-)
        * If this does **not** ``abort`` merge *gathered/matched*
          requirements result from deeper probing into local *gathered/matched*
          requirements and **return** it.
+       * If this ``aborts`` remove ``Y`` from being *picked* and force a new
+         version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
+         left ``abort``).
 
 ##### Example output(s) from actual run(s):
 
