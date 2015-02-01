@@ -34,7 +34,7 @@ from distutils import version as dist_version
 
 from pip import req as pip_req
 
-from pkgtools.pypi import PyPIXmlRpc
+from pkgtools.pypi import PyPIJson
 from pkgtools.pypi import real_name as pypi_real_name
 
 import argparse
@@ -212,17 +212,10 @@ def find_versions(pkg_name, options, prefix=""):
         real_pkg_name = pypi_real_name(pkg_name)
         if not real_pkg_name:
             raise ValueError("No pypi package named '%s' found" % pkg_name)
-        pypi = PyPIXmlRpc()
+        pypi = PyPIJson(real_pkg_name, fast=True)
+        pypi_data = pypi.retrieve()
         pkg_data = {}
-        for version in pypi.package_releases(real_pkg_name, True):
-            rel_urls = []
-            for tmp_rel_url in pypi.release_urls(real_pkg_name, version):
-                if not tmp_rel_url:
-                    continue
-                # Can't json serialize these...
-                for k in ['upload_time']:
-                    tmp_rel_url.pop(k, None)
-                rel_urls.append(tmp_rel_url)
+        for version, rel_urls in six.iteritems(pypi_data.get('releases', {})):
             if not rel_urls:
                 continue
             pkg_data[version] = rel_urls
