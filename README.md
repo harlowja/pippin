@@ -51,7 +51,7 @@ And wait ;-)
       new version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
  1. Extract that version ``Y`` dependencies (from its previously
-    deteremined ``egg-info``) and create a new requirement set (and recurse at
+    determined ``egg-info``) and create a new requirement set (and recurse at
     step #3; starting a new probe with this **different** *desired*
     requirement set).
     * If this ``aborts`` remove ``Y`` from being *picked* and force a new
@@ -59,7 +59,7 @@ And wait ;-)
       left ``abort``).
  1. Probe deeper by recursing (starting again at step #3) using
     current *gathered/matched* requirements (which has inserted version ``Y``
-    of ``X``).
+    of ``X`` + all of the *exact* dependencies found for ``Y``).
     * If this ``aborts`` remove ``Y`` from being *picked* and force a new
       version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
