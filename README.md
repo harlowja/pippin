@@ -61,8 +61,9 @@ And wait ;-)
     * If this ``aborts`` remove ``Y`` from being *picked* and force a new
       version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
-    * If this does **not** ``abort`` **return** result from deeper
-      probing.
+    * If this does **not** ``abort`` merge *gathered/matched* 
+      requirements result from deeper probing into our *gathered/matched*
+      requirements and **return** it.
 
 ##### Example output(s) from actual run(s):
 
