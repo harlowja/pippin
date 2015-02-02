@@ -51,8 +51,8 @@ And wait ;-)
       new version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
  1. Probe deeper by recursing (starting again at step #3) using
-    current *gathered/matched* requirements (which has inserted version ``Y``
-    of ``X`` + all of the *exact* dependencies found for ``Y``).
+    current *gathered/matched* requirements (which has inserted
+    version ``Y``).
     * If this ``aborts`` remove ``Y`` from being *picked* and force a new
       version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
