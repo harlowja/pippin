@@ -317,6 +317,7 @@ def check_is_compatible_alongside(pkg_req, gathered,
 
 
 def generate_prefix(levels):
+    # Yes I know this sucks...
     chapters = []
     tmp_levels = levels[:]
     while tmp_levels:
@@ -352,22 +353,24 @@ def generate_prefix(levels):
 
 
 def deep_prope(req, gathered, options, levels, prefix=""):
-    deep_requirements = OrderedDict()
     if options.verbose:
         print("%s: Checking if '%s' dependencies are"
               " compatible..." % (prefix, req))
     dep_count = len(req.details['dependencies'])
-    for dep in reversed(req.details['dependencies']):
-        d_req = pip_req.InstallRequirement.from_line(
-            dep,
-            comes_from="dependency of %s (entry %s)" % (req, dep_count))
-        deep_requirements[req_key(d_req)] = d_req
-        dep_count -= 1
-    levels.append('d')
-    try:
-        return probe(deep_requirements, gathered, options, levels)
-    finally:
-        levels.pop()
+    if dep_count:
+        deep_requirements = OrderedDict()
+        for dep in reversed(req.details['dependencies']):
+            d_req = pip_req.InstallRequirement.from_line(
+                dep,
+                comes_from="dependency of %s (entry %s)" % (req, dep_count))
+            deep_requirements[req_key(d_req)] = d_req
+        levels.append('d')
+        try:
+            return probe(deep_requirements, gathered, options, levels)
+        finally:
+            levels.pop()
+    else:
+        return {}
 
 
 def probe(requirements, gathered, options, levels):
@@ -416,15 +419,14 @@ def probe(requirements, gathered, options, levels):
                                           prefix=prefix)
             levels.append('p')
             try:
-                compat_gathered = probe(requirements,
-                                        gathered, options, levels)
-                # If we could merge the deep dependencies into the current
-                # requirements this would probably save a bunch of useless
-                # recursion... and make this work better...
-                compat_gathered = deep_prope(m, compat_gathered, options,
-                                             levels, prefix=prefix)
+                deep_gathered = probe(requirements,
+                                      gathered, options, levels)
             finally:
                 levels.pop()
+            check_is_compatible_alongside(m, deep_gathered, options,
+                                          prefix=prefix)
+            dependency_gathered = deep_prope(m, deep_gathered,
+                                             options, levels, prefix=prefix)
         except RequirementException as e:
             if options.verbose:
                 print("%s: Undoing decision to select '%s'"
@@ -435,7 +437,8 @@ def probe(requirements, gathered, options, levels):
         else:
             for _i in range(0, trials):
                 levels.pop()
-            gathered.update(compat_gathered)
+            gathered.update(deep_gathered)
+            gathered.update(dependency_gathered)
             return gathered
     for _i in range(0, trials):
         levels.pop()

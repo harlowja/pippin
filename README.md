@@ -56,17 +56,25 @@ And wait ;-)
     * If this ``aborts`` remove ``Y`` from being *picked* and force a new
       version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
- 1. Extract that version ``Y`` dependencies (from its previously
-    determined ``egg-info``) and create a new requirement set (and recurse at
-    step #3; starting a new probe with this **different** *desired*
-    requirement set using the resultant *gathered/matched* requirements from
-    the prior step).
-    * If this ``aborts`` remove ``Y`` from being *picked* and force a new
-      version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
+ 1. Check that the version ``Y`` of ``X`` selected is *still*
+    compatible along-side the *gathered/matched* requirements using the
+    resultant *gathered/matched* requirements from the prior step.
+    * If this ``aborts`` remove ``Y`` from being *picked* and force a
+      new version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
       left ``abort``).
-    * If this does **not** ``abort`` merge *gathered/matched*
-      requirements result from deeper probing into local *gathered/matched*
-      requirements and **return** it.
+    * If this does **not** ``abort``:
+       * Extract that version ``Y`` dependencies (from its previously
+         determined ``egg-info``) and create a new requirement set (and recurse
+         at step #3; starting a new probe with this **different** *desired*
+         requirement set using the resultant *gathered/matched* requirements
+         from the prior step).
+         * If this ``aborts`` remove ``Y`` from being *picked* and force a
+           new version ``Y`` of ``X`` to be checked (if no versions ``Y`` are
+           left ``abort``).
+         * If this does **not** ``abort`` merge *gathered/matched*
+           requirements result from deeper probing into
+           local *gathered/matched*
+           requirements and **return** it.
 
 ##### Example output(s) from actual run(s):
 
