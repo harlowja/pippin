@@ -416,7 +416,7 @@ def probe(requirements, gathered, options, levels):
                                           prefix=prefix)
             # If we could merge the deep dependencies into the current
             # requirements this would probably save a bunch of useless
-            # recursion...
+            # recursion... and make this work better...
             deep_gathered = deep_prope(m, gathered, options, levels,
                                        prefix=prefix)
             levels.append('p')
