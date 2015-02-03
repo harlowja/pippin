@@ -325,9 +325,9 @@ class DeepExpander(object):
         return candidates
 
 
-def probe(requirements, gathered, options):
+def probe(requirements, options):
     if not requirements:
-        return gathered
+        return {}
     print("Expanding all requirements dependencies (deeply) and"
           " finding matching versions that will be installable.")
     print("Please wait...")
@@ -335,6 +335,7 @@ def probe(requirements, gathered, options):
     detailer = EggDetailer(options)
     expander = DeepExpander(finder, detailer, options)
     expanded_requirements = OrderedDict()
+    gathered = {}
     for (pkg_name, pkg_req) in six.iteritems(requirements):
         expanded_requirements[pkg_name] = (pkg_req, expander.expand(pkg_req))
     return gathered
@@ -362,9 +363,8 @@ def main():
     for r in sorted(list(six.itervalues(initial)), cmp=req_cmp):
         print(" - %s" % r)
     print("Probing for a valid set...")
-    matches = OrderedDict()
     try:
-        matches = probe(initial, matches, options)
+        matches = probe(initial, options)
     except Exception:
         traceback.print_exc(file=sys.stdout)
     else:
