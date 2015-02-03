@@ -24,6 +24,7 @@ except ImportError:
 import collections
 import contextlib
 import json
+import logging
 import os
 import shutil
 import sys
@@ -41,15 +42,12 @@ import argparse
 import requests
 import six
 
+LOG = logging.getLogger('pippin')
+
 try:
     from pip import util as pip_util  # noqa
 except ImportError:
     from pip import utils as pip_util  # noqa
-
-
-# Egg info caches (since it can be expensive to recompute...)
-_EGGS_DETAILED = {}
-_EGGS_FAILED_DETAILED = {}
 
 
 class RequirementException(Exception):
@@ -84,62 +82,6 @@ def tempdir(**kwargs):
         shutil.rmtree(tdir)
 
 
-def get_directory_details(path):
-    if not os.path.isdir(path):
-        raise IOError("Can not detail non-existent directory %s" % (path))
-    req = pip_req.InstallRequirement.from_line(path)
-    req.source_dir = path
-    req.run_egg_info()
-    dependencies = []
-    for d in req.requirements():
-        if not d.startswith("-e") and d.find("#"):
-            d = d.split("#")[0]
-        d = d.strip()
-        if d:
-            dependencies.append(d)
-    details = {
-        'req': req.req,
-        'dependencies': dependencies,
-        'name': req.name,
-        'pkg_info': req.pkg_info(),
-        'dependency_links': req.dependency_links,
-        'version': req.installed_version,
-    }
-    return details
-
-
-def get_archive_details(filename, filesize, options, prefix=""):
-    if not os.path.isfile(filename):
-        raise IOError("Can not detail non-existent file %s" % (filename))
-    cache_key = "f:%s:%s" % (os.path.basename(filename), filesize)
-    if cache_key in _EGGS_FAILED_DETAILED:
-        exc_type, exc_value, exc_traceback = _EGGS_FAILED_DETAILED[cache_key]
-        six.reraise(exc_type, exc_value, exc_traceback)
-    try:
-        return _EGGS_DETAILED[cache_key]
-    except KeyError:
-        if options.verbose:
-            print("%s: Extracting egg-info from '%s'"
-                  % (prefix, os.path.basename(filename)))
-        with tempdir() as a_dir:
-            arch_filename = os.path.join(a_dir, os.path.basename(filename))
-            shutil.copyfile(filename, arch_filename)
-            extract_to = os.path.join(a_dir, 'build')
-            os.makedirs(extract_to)
-            pip_util.unpack_file(arch_filename, extract_to,
-                                 content_type='', link='')
-            try:
-                details = get_directory_details(extract_to)
-            except Exception:
-                # Don't bother saving the traceback (we don't care about it...)
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                _EGGS_FAILED_DETAILED[cache_key] = (exc_type, exc_value, None)
-                raise
-            else:
-                _EGGS_DETAILED[cache_key] = details
-                return details
-
-
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -165,15 +107,7 @@ def create_parser():
     return parser
 
 
-def download_url_to(url, save_path, options, size=None, prefix=""):
-    if size is not None:
-        kb_size = size // 1024
-        if options.verbose:
-            print("%s: Downloading '%s' (%skB) -> '%s'" % (prefix, url,
-                                                           kb_size, save_path))
-    else:
-        if options.verbose:
-            print("%s: Downloading '%s' -> '%s'" % (prefix, url, save_path))
+def download_url_to(url, save_path):
     resp = requests.get(url)
     with open(save_path, 'wb') as fh:
         fh.write(resp.content)
@@ -196,254 +130,214 @@ def parse_requirements(options):
     return requirements
 
 
-def find_versions(pkg_name, options, prefix=""):
-    def sorter(r1, r2):
-        return cmp(r1[1], r2[1])
-    version_path = os.path.join(options.scratch,
-                                ".versions", "%s.json" % pkg_name)
-    show_errors = True
-    if os.path.exists(version_path):
-        show_errors = False
-        with open(version_path, 'rb') as fh:
-            pkg_data = json.loads(fh.read())
-    else:
-        real_pkg_name = pypi_real_name(pkg_name)
-        if not real_pkg_name:
-            raise ValueError("No pypi package named '%s' found" % pkg_name)
-        pypi = PyPIJson(real_pkg_name, fast=True)
-        pypi_data = pypi.retrieve()
-        pkg_data = {}
-        for version, release_urls in six.iteritems(pypi_data.get('releases',
-                                                                 {})):
-            if not release_urls:
-                continue
-            pkg_data[version] = release_urls
-        if not pkg_data:
-            raise ValueError("No pypi package release information for"
-                             " '%s' found" % pkg_name)
-        with open(version_path, 'wb') as fh:
-            fh.write(json.dumps(pkg_data, indent=4))
-    releases = []
-    for version, release_urls in six.iteritems(pkg_data):
-        rel = rel_fn = rel_size = None
-        for r in release_urls:
-            if r['packagetype'] == 'sdist':
-                rel = r['url']
-                rel_fn = r['filename']
-                rel_size = r['size']
-        if not all([rel, rel_fn, rel_size]):
-            if show_errors:
-                print("ERROR: no sdist found for '%s==%s'"
-                      % (pkg_name, version), file=sys.stderr)
-            continue
+class EggDetailer(object):
+    def __init__(self, options):
+        self.options = options
+        self.egg_cache = {}
+        self.egg_fail_cache = {}
+
+    def _get_directory_details(self, path):
+        if not os.path.isdir(path):
+            raise IOError("Can not detail non-existent directory %s" % (path))
+        req = pip_req.InstallRequirement.from_line(path)
+        req.source_dir = path
+        req.run_egg_info()
+        dependencies = []
+        for d in req.requirements():
+            if not d.startswith("-e") and d.find("#"):
+                d = d.split("#")[0]
+            d = d.strip()
+            if d:
+                dependencies.append(d)
+        details = {
+            'req': req.req,
+            'dependencies': dependencies,
+            'name': req.name,
+            'pkg_info': req.pkg_info(),
+            'dependency_links': req.dependency_links,
+            'version': req.installed_version,
+        }
+        return details
+
+    def _get_archive_details(self, filename, filesize):
+        if not os.path.isfile(filename):
+            raise IOError("Can not detail non-existent file %s" % (filename))
+        cache_key = "f:%s:%s" % (os.path.basename(filename), filesize)
+        if cache_key in self.egg_fail_cache:
+            exc_type, exc_value, exc_traceback = self.egg_fail_cache[cache_key]
+            six.reraise(exc_type, exc_value, exc_traceback)
         try:
-            m_rel = _MatchedRelease(
-                version, dist_version.LooseVersion(version),
-                rel, rel_fn, rel_size)
-            releases.append(m_rel)
-        except ValueError:
-            if show_errors:
-                print("ERROR: failed parsing '%s==%s'"
-                      % (pkg_name, version), file=sys.stderr)
-    return sorted(releases, cmp=sorter)
-
-
-def fetch_details(req, options, prefix=""):
-    origin_filename = req.origin_filename
-    origin_url = req.origin_url
-    download_path = os.path.join(options.scratch,
-                                 '.download', origin_filename)
-    if not os.path.exists(download_path):
-        download_url_to(origin_url, download_path, options,
-                        size=req.origin_size, prefix=prefix)
-    return get_archive_details(download_path, req.origin_size, options,
-                               prefix=prefix)
-
-
-def match_available(req, available, options, prefix=""):
-    looked_in = []
-    useables = []
-    for a in reversed(available):
-        v = a.string_version
-        if v in req:
-            line = "%s==%s" % (req.key, v)
-            m_req = pip_req.InstallRequirement.from_line(line)
-            if options.verbose:
-                print("%s: Found '%s' as able to satisfy '%s'"
-                      % (prefix, m_req, req))
-            m_req.origin_url = a.origin_url
-            m_req.origin_filename = a.origin_filename
-            m_req.origin_size = a.origin_size
-            useables.append(m_req)
-        else:
-            looked_in.append(v)
-    if not useables:
-        raise NotFoundException("No requirement found that"
-                                " matches '%s' (tried %s)" % (req, looked_in))
-    else:
-        return useables
-
-
-def check_is_compatible_alongside(pkg_req, gathered,
-                                  options, prefix=""):
-    if options.verbose:
-        print("%s: Checking if '%s' is compatible along-side:" % (prefix,
-                                                                  pkg_req))
-        for req_name, other_req in six.iteritems(gathered):
-            if req_key(pkg_req) == req_name:
-                continue
-            print("%s: - %s==%s" % (prefix, req_name,
-                                    other_req.details['version']))
-            for other_dep in other_req.details['dependencies']:
-                print("%s:  + %s" % (prefix, other_dep))
-    # If we conflict with the currently gathered requirements, give up...
-    for req_name, other_req in six.iteritems(gathered):
-        if req_key(pkg_req) == req_name:
-            if pkg_req.details['version'] not in other_req.req:
-                raise RequirementException("'%s==%s' not in '%s'"
-                                           % (pkg_req.details['name'],
-                                              pkg_req.details['version'],
-                                              other_req))
-        for i, dep in enumerate(other_req.details['dependencies']):
-            d_req = pip_req.InstallRequirement.from_line(
-                dep,
-                comes_from="dependency of %s (entry %s)" % (other_req, i + 1))
-            if req_key(pkg_req) == req_key(d_req):
-                if pkg_req.details['version'] not in d_req.req:
-                    raise RequirementException("'%s==%s' not in '%s'"
-                                               % (pkg_req.details['name'],
-                                                  pkg_req.details['version'],
-                                                  d_req))
-
-
-def generate_prefix(levels):
-    # Yes I know this sucks...
-    chapters = []
-    tmp_levels = levels[:]
-    while tmp_levels:
-        c = tmp_levels[0]
-        if c in ("p", "d"):
-            if not chapters:
-                chapters.append([c, 1, 0, 0])
-            else:
-                if c == chapters[-1][0]:
-                    chapters[-1][1] += 1
+            return self.egg_cache[cache_key]
+        except KeyError:
+            with tempdir() as a_dir:
+                arch_filename = os.path.join(a_dir, os.path.basename(filename))
+                shutil.copyfile(filename, arch_filename)
+                extract_to = os.path.join(a_dir, 'build')
+                os.makedirs(extract_to)
+                pip_util.unpack_file(arch_filename, extract_to,
+                                     content_type='', link='')
+                try:
+                    details = self._get_directory_details(extract_to)
+                except Exception:
+                    # Don't bother saving the traceback (we don't care
+                    # about it...)
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    self.egg_fail_cache[cache_key] = (exc_type,
+                                                      exc_value, None)
+                    raise
                 else:
-                    chapters.append([c, 1, 0, 0])
-            tmp_levels.pop(0)
+                    self.egg_cache[cache_key] = details
+                    return details
+
+    def fetch(self, req):
+        origin_filename = req.origin_filename
+        origin_url = req.origin_url
+        download_path = os.path.join(self.options.scratch,
+                                     '.download', origin_filename)
+        if not os.path.exists(download_path):
+            download_url_to(origin_url, download_path)
+        return self._get_archive_details(download_path, req.origin_size)
+
+
+class PackageFinder(object):
+    MAX_VERSIONS = 5
+
+    def __init__(self, options):
+        self.options = options
+        self.no_sdist_cache = set()
+        self.no_parse_cache = set()
+
+    def match_available(self, pkg_req):
+        looked_in = []
+        useables = []
+        available = self._find_releases(req_key(pkg_req))
+        req = pkg_req.req
+        for a in reversed(available):
+            v = a.string_version
+            if v in req:
+                line = "%s==%s" % (req_key(pkg_req), v)
+                m_req = pip_req.InstallRequirement.from_line(line)
+                m_req.origin_url = a.origin_url
+                m_req.origin_filename = a.origin_filename
+                m_req.origin_size = a.origin_size
+                useables.append(m_req)
+                if len(useables) == self.MAX_VERSIONS:
+                    break
+            else:
+                looked_in.append(v)
+        if not useables:
+            raise NotFoundException("No requirement found that"
+                                    " matches '%s' (tried %s)" % (pkg_req,
+                                                                  looked_in))
         else:
-            trial = 0
-            max_trials = 0
-            while tmp_levels and tmp_levels[0].startswith("t."):
-                trial += 1
-                max_trials = int(tmp_levels[0][2:])
-                tmp_levels.pop(0)
-            if max_trials:
-                chapters[-1][2] = trial
-                chapters[-1][3] = max_trials
-    prefix = six.StringIO()
-    for i, (kind, count, trials, max_trials) in enumerate(chapters):
-        if max_trials:
-            prefix.write("%s%s(%s/%s)" % (kind, count, trials, max_trials))
+            return useables
+
+    def _find_releases(self, pkg_name):
+        def sorter(r1, r2):
+            return cmp(r1[1], r2[1])
+        version_path = os.path.join(self.options.scratch,
+                                    ".versions", "%s.json" % pkg_name)
+        shown_before = False
+        if os.path.exists(version_path):
+            shown_before = True
+            with open(version_path, 'rb') as fh:
+                pkg_data = json.loads(fh.read())
         else:
-            prefix.write("%s%s" % (kind, count))
-        if i + 1 != len(chapters):
-            prefix.write(".")
-    return prefix.getvalue()
+            real_pkg_name = pypi_real_name(pkg_name)
+            if not real_pkg_name:
+                raise ValueError("No pypi package named '%s' found" % pkg_name)
+            pypi = PyPIJson(real_pkg_name, fast=True)
+            pypi_data = pypi.retrieve()
+            pkg_data = {}
+            releases = pypi_data.get('releases', {})
+            for version, release_urls in six.iteritems(releases):
+                if not release_urls:
+                    continue
+                pkg_data[version] = release_urls
+            if not pkg_data:
+                raise ValueError("No pypi package release information for"
+                                 " '%s' found" % pkg_name)
+            with open(version_path, 'wb') as fh:
+                fh.write(json.dumps(pkg_data, indent=4))
+        releases = []
+        for version, release_urls in six.iteritems(pkg_data):
+            rel = rel_fn = rel_size = None
+            for r in release_urls:
+                if r['packagetype'] == 'sdist':
+                    rel = r['url']
+                    rel_fn = r['filename']
+                    rel_size = r['size']
+            rel_identity = "%s==%s" % (pkg_name, version)
+            if not all([rel, rel_fn, rel_size]):
+                if rel_identity not in self.no_sdist_cache:
+                    LOG.warn("No sdist found for '%s==%s'", pkg_name, version)
+                    self.no_sdist_cache.add(rel_identity)
+            else:
+                try:
+                    m_rel = _MatchedRelease(
+                        version, dist_version.LooseVersion(version),
+                        rel, rel_fn, rel_size)
+                    releases.append(m_rel)
+                except ValueError:
+                    if rel_identity not in self.no_parse_cache:
+                        LOG.warn("Failed parsing '%s==%s'", pkg_name, version,
+                                 exc_info=True)
+                        self.no_parse_cache.add(rel_identity)
+        releases = sorted(releases, cmp=sorter)
+        if LOG.isEnabledFor(logging.DEBUG) and not shown_before:
+            for rel in releases:
+                LOG.debug("Found '%s' on pypi", rel.origin_url)
+        return releases
 
 
-def deep_prope(req, gathered, options, levels, prefix=""):
-    if options.verbose:
-        print("%s: Checking if '%s' dependencies are"
-              " compatible..." % (prefix, req))
-    dep_count = len(req.details['dependencies'])
-    if dep_count:
-        deep_requirements = OrderedDict()
-        for dep in reversed(req.details['dependencies']):
-            d_req = pip_req.InstallRequirement.from_line(
-                dep,
-                comes_from="dependency of %s (entry %s)" % (req, dep_count))
-            deep_requirements[req_key(d_req)] = d_req
-        levels.append('d')
-        try:
-            return probe(deep_requirements, gathered, options, levels)
-        finally:
-            levels.pop()
-    else:
-        return {}
+class DeepExpander(object):
+    def __init__(self, finder, detailer, options):
+        self.options = options
+        self.finder = finder
+        self.detailer = detailer
+        self.egg_fail_cache = set()
+
+    def expand(self, pkg_req):
+        possibles = self.finder.match_available(pkg_req)
+        candidates = []
+        for m in possibles:
+            if not hasattr(m, 'details'):
+                try:
+                    m.details = self.detailer.fetch(m)
+                except Exception as e:
+                    if m.req not in self.egg_fail_cache:
+                        LOG.warn("Failed detailing '%s'", m)
+                        e_blob = str(e)
+                        for line in e_blob.splitlines():
+                            LOG.warn(line)
+                        self.egg_fail_cache.add(m.req)
+            if not hasattr(m, 'details'):
+                continue
+            deep_requirements = OrderedDict()
+            dep_count = len(m.details['dependencies'])
+            for dep in reversed(m.details['dependencies']):
+                d_req = pip_req.InstallRequirement.from_line(
+                    dep,
+                    comes_from="dependency of %s (entry %s)" % (m, dep_count))
+                deep_requirements[req_key(d_req)] = self.expand(d_req)
+                dep_count -= 1
+            candidates.append((m, deep_requirements))
+        return candidates
 
 
-def probe(requirements, gathered, options, levels):
+def probe(requirements, gathered, options):
     if not requirements:
         return gathered
-    # Pick one of the requirements, get a version that works with the
-    # current known siblings (other requirements that are requested along
-    # side this requirement) and then recurse trying to get another
-    # requirement that will work, if this is not possible, backtrack and
-    # try a different version instead (and repeat)...
-    prefix = ' %s' % (generate_prefix(levels))
-    gathered = gathered.copy()
-    requirements = requirements.copy()
-    pkg_name, pkg_req = requirements.popitem()
-    if options.verbose:
-        print("%s: Probing for valid match for %s" % (prefix, pkg_req))
-    possibles = match_available(pkg_req.req,
-                                find_versions(pkg_name, options,
-                                              prefix=prefix),
-                                options,
-                                prefix=prefix)
-    trials = 0
-    for m in possibles:
-        trials += 1
-        levels.append('t.%s' % len(possibles))
-        prefix = ' %s' % (generate_prefix(levels))
-        if not hasattr(m, 'details'):
-            try:
-                m.details = fetch_details(m, options, prefix=prefix)
-            except Exception as e:
-                print("ERROR: failed detailing '%s'"
-                      % (m), file=sys.stderr)
-                e_blob = str(e)
-                for line in e_blob.splitlines():
-                    print("%s" % (line), file=sys.stderr)
-        if not hasattr(m, 'details'):
-            continue
-        existing_req = None
-        if pkg_name in gathered:
-            if m.details['version'] not in gathered[pkg_name].req:
-                continue
-            existing_req = gathered[pkg_name]
-        gathered[pkg_name] = m
-        try:
-            check_is_compatible_alongside(m, gathered, options,
-                                          prefix=prefix)
-            levels.append('p')
-            try:
-                deep_gathered = probe(requirements,
-                                      gathered, options, levels)
-            finally:
-                levels.pop()
-            check_is_compatible_alongside(m, deep_gathered, options,
-                                          prefix=prefix)
-            dependency_gathered = deep_prope(m, deep_gathered,
-                                             options, levels, prefix=prefix)
-        except RequirementException as e:
-            if options.verbose:
-                print("%s: Undoing decision to select '%s'"
-                      " due to: %s" % (prefix, m, e))
-            gathered.pop(pkg_name)
-            if existing_req is not None:
-                gathered[pkg_name] = existing_req
-        else:
-            for _i in range(0, trials):
-                levels.pop()
-            gathered.update(deep_gathered)
-            gathered.update(dependency_gathered)
-            return gathered
-    for _i in range(0, trials):
-        levels.pop()
-    raise RequirementException("No working requirement found for '%s'"
-                               % pkg_req)
+    print("Expanding all requirements dependencies (deeply) and"
+          " finding matching versions that will be installable.")
+    print("Please wait...")
+    finder = PackageFinder(options)
+    detailer = EggDetailer(options)
+    expander = DeepExpander(finder, detailer, options)
+    expanded_requirements = OrderedDict()
+    for (pkg_name, pkg_req) in six.iteritems(requirements):
+        expanded_requirements[pkg_name] = (pkg_req, expander.expand(pkg_req))
+    return gathered
 
 
 def main():
@@ -453,23 +347,28 @@ def main():
     options = parser.parse_args()
     if not options.requirements:
         parser.error("At least one requirement file must be provided")
+    if options.verbose:
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(levelname)s: @%(name)s : %(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO,
+                            format='%(levelname)s: @%(name)s : %(message)s')
     initial = parse_requirements(options)
     for d in ['.download', '.versions']:
         scratch_path = os.path.join(options.scratch, d)
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
-    print("+ Initial package set:")
+    print("Initial package set:")
     for r in sorted(list(six.itervalues(initial)), cmp=req_cmp):
         print(" - %s" % r)
-    print("+ Probing for a valid set...")
+    print("Probing for a valid set...")
     matches = OrderedDict()
-    levels = ['p']
     try:
-        matches = probe(initial, matches, options, levels)
+        matches = probe(initial, matches, options)
     except Exception:
         traceback.print_exc(file=sys.stdout)
     else:
-        print("+ Expanded package set:")
+        print("Expanded package set:")
         for r in sorted(list(six.itervalues(matches)), cmp=req_cmp):
             print(" - %s" % r)
 
