@@ -23,22 +23,22 @@ except ImportError:
 
 import collections
 import contextlib
+import hashlib
 import json
 import logging
 import os
 import shutil
 import sys
 import tempfile
-import traceback
 
 from distutils import version as dist_version
 
+import argparse
+import networkx as nx
+from networkx.algorithms import traversal
 from pip import req as pip_req
-
 from pkgtools.pypi import PyPIJson
 from pkgtools.pypi import real_name as pypi_real_name
-
-import argparse
 import requests
 import six
 
@@ -56,6 +56,57 @@ class RequirementException(Exception):
 
 class NotFoundException(Exception):
     pass
+
+
+def parse_line(line):
+    if line.startswith('-e') or line.startswith('--editable'):
+        if line.startswith('-e'):
+            line = line[2:].strip()
+        else:
+            line = line[len('--editable'):].strip().lstrip('=')
+        req = pip_req.InstallRequirement.from_editable(line, comes_from="??")
+    else:
+        req = pip_req.InstallRequirement.from_line(line, comes_from="??")
+    return req
+
+
+class DiGraph(nx.DiGraph):
+    """A directed graph subclass with useful utility functions."""
+    def __init__(self, data=None, name=''):
+        super(DiGraph, self).__init__(name=name, data=data)
+        self.frozen = False
+
+    def pformat(self):
+        """Pretty formats your graph into a string.
+
+        This pretty formatted string representation includes many useful
+        details about your graph, including; name, type, frozeness, node count,
+        nodes, edge count, edges, graph density and graph cycles (if any).
+        """
+        lines = []
+        lines.append("Name: %s" % self.name)
+        lines.append("Type: %s" % type(self).__name__)
+        lines.append("Frozen: %s" % nx.is_frozen(self))
+        lines.append("Nodes: %s" % self.number_of_nodes())
+        for n in self.nodes_iter():
+            lines.append("  - %s" % n)
+        lines.append("Edges: %s" % self.number_of_edges())
+        for (u, v, e_data) in self.edges_iter(data=True):
+            if e_data:
+                lines.append("  %s -> %s (%s)" % (u, v, e_data))
+            else:
+                lines.append("  %s -> %s" % (u, v))
+        lines.append("Density: %0.3f" % nx.density(self))
+        cycles = list(nx.cycles.recursive_simple_cycles(self))
+        lines.append("Cycles: %s" % len(cycles))
+        for cycle in cycles:
+            buf = six.StringIO()
+            buf.write("%s" % (cycle[0]))
+            for i in range(1, len(cycle)):
+                buf.write(" --> %s" % (cycle[i]))
+            buf.write(" --> %s" % (cycle[0]))
+            lines.append("  %s" % buf.getvalue())
+        return os.linesep.join(lines)
 
 
 _MatchedRelease = collections.namedtuple('_MatchedRelease',
@@ -80,6 +131,17 @@ def tempdir(**kwargs):
         yield tdir
     finally:
         shutil.rmtree(tdir)
+
+
+def check_is_compatible_alongside(pkg_req, gathered):
+    # If we conflict with the currently gathered requirements, give up...
+    for req_name, other_req in six.iteritems(gathered):
+        if req_key(pkg_req) == req_name:
+            if pkg_req.details['version'] not in other_req.req:
+                raise RequirementException("'%s==%s' not in '%s'"
+                                           % (pkg_req.details['name'],
+                                              pkg_req.details['version'],
+                                              other_req))
 
 
 def create_parser():
@@ -139,7 +201,7 @@ class EggDetailer(object):
     def _get_directory_details(self, path):
         if not os.path.isdir(path):
             raise IOError("Can not detail non-existent directory %s" % (path))
-        req = pip_req.InstallRequirement.from_line(path)
+        req = parse_line(path)
         req.source_dir = path
         req.run_egg_info()
         dependencies = []
@@ -195,6 +257,7 @@ class EggDetailer(object):
         download_path = os.path.join(self.options.scratch,
                                      '.download', origin_filename)
         if not os.path.exists(download_path):
+            LOG.debug("Downloading '%s' -> '%s'", origin_url, download_path)
             download_url_to(origin_url, download_path)
         return self._get_archive_details(download_path, req.origin_size)
 
@@ -216,7 +279,7 @@ class PackageFinder(object):
             v = a.string_version
             if v in req:
                 line = "%s==%s" % (req_key(pkg_req), v)
-                m_req = pip_req.InstallRequirement.from_line(line)
+                m_req = parse_line(line)
                 m_req.origin_url = a.origin_url
                 m_req.origin_filename = a.origin_filename
                 m_req.origin_size = a.origin_size
@@ -237,9 +300,7 @@ class PackageFinder(object):
             return cmp(r1[1], r2[1])
         version_path = os.path.join(self.options.scratch,
                                     ".versions", "%s.json" % pkg_name)
-        shown_before = False
         if os.path.exists(version_path):
-            shown_before = True
             with open(version_path, 'rb') as fh:
                 pkg_data = json.loads(fh.read())
         else:
@@ -283,11 +344,7 @@ class PackageFinder(object):
                         LOG.warn("Failed parsing '%s==%s'", pkg_name, version,
                                  exc_info=True)
                         self.no_parse_cache.add(rel_identity)
-        releases = sorted(releases, cmp=sorter)
-        if LOG.isEnabledFor(logging.DEBUG) and not shown_before:
-            for rel in releases:
-                LOG.debug("Found '%s' on pypi", rel.origin_url)
-        return releases
+        return sorted(releases, cmp=sorter)
 
 
 class DeepExpander(object):
@@ -297,9 +354,19 @@ class DeepExpander(object):
         self.detailer = detailer
         self.egg_fail_cache = set()
 
-    def expand(self, pkg_req):
+    def expand(self, pkg_req, graph=None):
+        if graph is None:
+            graph = DiGraph()
+        self._expand(pkg_req, graph)
+        return graph
+
+    def _expand(self, pkg_req, graph):
+        if graph.has_node(pkg_req.req):
+            return pkg_req.req
+        else:
+            LOG.debug("Expanding matches for %s", pkg_req)
+            graph.add_node(pkg_req.req, req=pkg_req)
         possibles = self.finder.match_available(pkg_req)
-        candidates = []
         for m in possibles:
             if not hasattr(m, 'details'):
                 try:
@@ -313,32 +380,89 @@ class DeepExpander(object):
                         self.egg_fail_cache.add(m.req)
             if not hasattr(m, 'details'):
                 continue
-            deep_requirements = OrderedDict()
-            dep_count = len(m.details['dependencies'])
-            for dep in reversed(m.details['dependencies']):
-                d_req = pip_req.InstallRequirement.from_line(
-                    dep,
-                    comes_from="dependency of %s (entry %s)" % (m, dep_count))
-                deep_requirements[req_key(d_req)] = self.expand(d_req)
-                dep_count -= 1
-            candidates.append((m, deep_requirements))
-        return candidates
+            if not graph.has_node(m.req):
+                graph.add_node(m.req, req=m)
+            if pkg_req.req != m.req:
+                graph.add_edge(pkg_req.req, m.req)
+            for dep in m.details['dependencies']:
+                dep_req = parse_line(dep)
+                graph.add_edge(m.req, self._expand(dep_req, graph))
+        return pkg_req.req
 
 
-def probe(requirements, options):
+def expand(requirements, options):
     if not requirements:
         return {}
     print("Expanding all requirements dependencies (deeply) and"
-          " finding matching versions that will be installable.")
+          " finding matching versions that will be installable into a"
+          " directed graph...")
     print("Please wait...")
-    finder = PackageFinder(options)
-    detailer = EggDetailer(options)
-    expander = DeepExpander(finder, detailer, options)
-    expanded_requirements = OrderedDict()
-    gathered = {}
+    # Cache it in the scratch dir to avoid recomputing...
+    buf = six.StringIO()
     for (pkg_name, pkg_req) in six.iteritems(requirements):
-        expanded_requirements[pkg_name] = (pkg_req, expander.expand(pkg_req))
-    return gathered
+        buf.write(pkg_req.req)
+        buf.write("\n")
+    graph_name = hashlib.md5(buf.getvalue().strip()).hexdigest()
+    graph_pickled_filename = os.path.join(options.scratch, '.graphs',
+                                          "%s.gpickle" % graph_name)
+    if os.path.exists(graph_pickled_filename):
+        return nx.read_gpickle(graph_pickled_filename)
+    else:
+        finder = PackageFinder(options)
+        detailer = EggDetailer(options)
+        graph = DiGraph(name=graph_name)
+        expander = DeepExpander(finder, detailer, options)
+        for (pkg_name, pkg_req) in six.iteritems(requirements):
+            expander.expand(pkg_req, graph=graph)
+        nx.write_gpickle(graph, graph_pickled_filename)
+        return graph
+
+
+def resolve(requirements, graph, options):
+    # Unset node markings that say whether this has worked or not...
+    for dep, dep_dep in traversal.dfs_edges(graph):
+        graph.node[dep]['bad'] = False
+        graph.node[dep_dep]['bad'] = False
+    selections = {}
+    path = []
+    while True:
+        if not requirements:
+            return selections
+        pkg_name, pkg_req = requirements.popitem()
+        path.append((pkg_name, pkg_req))
+        for dep in graph.edges_iter(pkg_req.req):
+            dep_path = []
+            while dep is not None:
+                dep_path.append(dep)
+                valid_dep = None
+                for dep_dep, dep_data in graph.edges_iter(dep, data=True):
+                    if not graph.node[dep_dep]['bad']:
+                        pkg_req = dep_data['req']
+                        if not check_is_compatible_alongside(pkg_req,
+                                                             selections):
+                            graph.node[dep_dep]['bad'] = True
+                        else:
+                            valid_dep = dep_dep
+                            break
+                if valid_dep is None:
+                    try:
+                        dep = dep_path.pop()
+                    except IndexError:
+                        dep = None
+                else:
+                    dep = valid_dep
+            print(dep_path)
+
+
+def setup_logging(options):
+    if options.verbose:
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(levelname)s: @%(name)s : %(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO,
+                            format='%(levelname)s: @%(name)s : %(message)s')
+    req_logger = logging.getLogger('requests')
+    req_logger.setLevel(logging.WARNING)
 
 
 def main():
@@ -348,29 +472,18 @@ def main():
     options = parser.parse_args()
     if not options.requirements:
         parser.error("At least one requirement file must be provided")
-    if options.verbose:
-        logging.basicConfig(level=logging.DEBUG,
-                            format='%(levelname)s: @%(name)s : %(message)s')
-    else:
-        logging.basicConfig(level=logging.INFO,
-                            format='%(levelname)s: @%(name)s : %(message)s')
+    setup_logging(options)
     initial = parse_requirements(options)
-    for d in ['.download', '.versions']:
+    for d in ['.download', '.versions', '.graphs']:
         scratch_path = os.path.join(options.scratch, d)
         if not os.path.isdir(scratch_path):
             os.makedirs(scratch_path)
     print("Initial package set:")
     for r in sorted(list(six.itervalues(initial)), cmp=req_cmp):
         print(" - %s" % r)
-    print("Probing for a valid set...")
-    try:
-        matches = probe(initial, options)
-    except Exception:
-        traceback.print_exc(file=sys.stdout)
-    else:
-        print("Expanded package set:")
-        for r in sorted(list(six.itervalues(matches)), cmp=req_cmp):
-            print(" - %s" % r)
+    graph = expand(initial, options)
+    print(graph.pformat())
+    resolved = resolve(initial, graph, options)
 
 
 if __name__ == "__main__":
