@@ -182,7 +182,7 @@ def create_parser():
 
 def download_url_to(url, options, save_path):
     LOG.debug("Downloading '%s' -> '%s' (timeout=%s)",
-              origin_url, download_path, options.timeout)
+              url, save_path, options.timeout)
     resp = requests.get(url, timeout=options.timeout)
     with open(save_path, 'wb') as fh:
         fh.write(resp.content)
