@@ -485,10 +485,12 @@ def resolve(requirements, graph, options):
 def setup_logging(options):
     if options.verbose:
         logging.basicConfig(level=logging.DEBUG,
-                            format='%(levelname)s: @%(name)s : %(message)s')
+                            format='%(levelname)s: @%(name)s : %(message)s',
+                            stream=sys.stdout)
     else:
         logging.basicConfig(level=logging.INFO,
-                            format='%(levelname)s: @%(name)s : %(message)s')
+                            format='%(levelname)s: @%(name)s : %(message)s',
+                            stream=sys.stdout)
     req_logger = logging.getLogger('requests')
     req_logger.setLevel(logging.WARNING)
 
