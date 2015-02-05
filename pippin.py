@@ -307,6 +307,10 @@ class PackageFinder(object):
             return useables
 
     def _find_releases(self, pkg_name):
+        def req_func(url, timeout=None):
+            LOG.debug("Downloading '%s'", url)
+            r = requests.get(url, timeout=timeout)
+            return r.content
         def sorter(r1, r2):
             return cmp(r1[1], r2[1])
         version_path = os.path.join(self.options.scratch,
@@ -320,7 +324,8 @@ class PackageFinder(object):
             if not real_pkg_name:
                 raise ValueError("No pypi package named '%s' found" % pkg_name)
             pypi = PyPIJson(real_pkg_name, fast=True)
-            pypi_data = pypi.retrieve(timeout=self.options.timeout)
+            pypi_data = pypi.retrieve(timeout=self.options.timeout,
+                                      req_func=req_func)
             pkg_data = {}
             releases = pypi_data.get('releases', {})
             for version, release_urls in six.iteritems(releases):
