@@ -181,6 +181,8 @@ def create_parser():
 
 
 def download_url_to(url, options, save_path):
+    LOG.debug("Downloading '%s' -> '%s' (timeout=%s)",
+              origin_url, download_path, options.timeout)
     resp = requests.get(url, timeout=options.timeout)
     with open(save_path, 'wb') as fh:
         fh.write(resp.content)
@@ -268,7 +270,6 @@ class EggDetailer(object):
         download_path = os.path.join(self.options.scratch,
                                      '.download', origin_filename)
         if not os.path.exists(download_path):
-            LOG.debug("Downloading '%s' -> '%s'", origin_url, download_path)
             download_url_to(origin_url, self.options, download_path)
         return self._get_archive_details(download_path, req.origin_size)
 
@@ -308,7 +309,7 @@ class PackageFinder(object):
 
     def _find_releases(self, pkg_name):
         def req_func(url, timeout=None):
-            LOG.debug("Downloading '%s'", url)
+            LOG.debug("Downloading '%s' (timeout=%s)", url, timeout)
             r = requests.get(url, timeout=timeout)
             return r.content
         def sorter(r1, r2):
