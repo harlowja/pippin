@@ -44,8 +44,8 @@ import six
 
 LOG = logging.getLogger('pippin')
 
-# URL downloading/fetching timeout...
-TIMEOUT = 5
+# Default URL downloading/fetching timeout...
+TIMEOUT = 5.0
 
 try:
     from pip import util as pip_util  # noqa
@@ -171,11 +171,17 @@ def create_parser():
         action='store_true',
         default=False,
         help="Enable verbose output")
+    parser.add_argument(
+        "-t", "--timeout",
+        dest="timeout",
+        type=float,
+        default=float(TIMEOUT),
+        help="Connection timeout (default: %s)" % TIMEOUT)
     return parser
 
 
-def download_url_to(url, save_path):
-    resp = requests.get(url, timeout=TIMEOUT)
+def download_url_to(url, options, save_path):
+    resp = requests.get(url, timeout=options.timeout)
     with open(save_path, 'wb') as fh:
         fh.write(resp.content)
     return resp.content
@@ -263,7 +269,7 @@ class EggDetailer(object):
                                      '.download', origin_filename)
         if not os.path.exists(download_path):
             LOG.debug("Downloading '%s' -> '%s'", origin_url, download_path)
-            download_url_to(origin_url, download_path)
+            download_url_to(origin_url, self.options, download_path)
         return self._get_archive_details(download_path, req.origin_size)
 
 
@@ -309,11 +315,12 @@ class PackageFinder(object):
             with open(version_path, 'rb') as fh:
                 pkg_data = json.loads(fh.read())
         else:
-            real_pkg_name = pypi_real_name(pkg_name, timeout=TIMEOUT)
+            real_pkg_name = pypi_real_name(pkg_name,
+                                           timeout=self.options.timeout)
             if not real_pkg_name:
                 raise ValueError("No pypi package named '%s' found" % pkg_name)
             pypi = PyPIJson(real_pkg_name, fast=True)
-            pypi_data = pypi.retrieve(timeout=TIMEOUT)
+            pypi_data = pypi.retrieve(timeout=self.options.timeout)
             pkg_data = {}
             releases = pypi_data.get('releases', {})
             for version, release_urls in six.iteritems(releases):
