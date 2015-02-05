@@ -163,7 +163,7 @@ def create_parser():
         help="Scratch path (used for caching downloaded data)"
              " [default: %s]" % (os.getcwd()))
     parser.add_argument(
-        "--verbose",
+        "-v", "--verbose",
         dest="verbose",
         action='store_true',
         default=False,
@@ -439,28 +439,30 @@ def expand(requirements, options):
         return graph
 
 
-def path_iter(root, graph, level=0):
+def dfs_path_iter(root, graph, level=0, only_exact=True):
+    if only_exact:
+        if graph.node[root].get('exact'):
+            yield root, level
+    else:
+        yield root, level
     children = list(graph.successors_iter(root))
-    yield root, level
-    for a_child in children:
-        for c, c_level in path_iter(a_child, graph, level=level+1):
-            yield c, c_level
+    for c in children:
+        for c, child_level in dfs_path_iter(c, graph,
+                                            level=level+1,
+                                            only_exact=only_exact):
+            yield c, child_level
 
 
 def resolve(requirements, graph, options):
-    solutions = OrderedDict()
+    solution_paths = OrderedDict()
     for pkg_name, pkg_req in six.iteritems(requirements):
-        solutions[pkg_name] = traversal.dfs_tree(graph, pkg_req.req)
-        pkg_graph = solutions[pkg_name]
-        # For some reason this isn't cloned, so clone it...
-        for pkg_req in six.iterkeys(graph.node):
-            if pkg_graph.has_node(pkg_req):
-                pkg_graph.node[pkg_req].update(graph.node[pkg_req])
-    for pkg_name, pkg_req in six.iteritems(requirements):
-        print(pkg_name)
-        pkg_tree = solutions[pkg_name]
-        paths = list(path_iter(pkg_req.req, pkg_tree))
-        print(paths)
+        paths = list(dfs_path_iter(pkg_req.req, graph, level=1))
+        solution_paths[pkg_name] = (pkg_req, paths)
+        if options.verbose:
+            print("Solutions for '%s'" % pkg_req)
+            for p, p_level in paths:
+                indent = " " * p_level
+                print("%s%s" % (indent, p))
     return {}
 
 
@@ -492,7 +494,8 @@ def main():
     for r in sorted(list(six.itervalues(initial)), cmp=req_cmp):
         print(" - %s" % r)
     graph = expand(initial, options)
-    print(graph.pformat())
+    if options.verbose:
+        print(graph.pformat())
     resolved = resolve(initial, graph, options)
     print("Resolved package set:")
     for r in sorted(list(six.itervalues(resolved)), cmp=req_cmp):
