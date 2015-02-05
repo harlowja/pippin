@@ -44,6 +44,9 @@ import six
 
 LOG = logging.getLogger('pippin')
 
+# URL downloading/fetching timeout...
+TIMEOUT = 5
+
 try:
     from pip import util as pip_util  # noqa
 except ImportError:
@@ -172,7 +175,7 @@ def create_parser():
 
 
 def download_url_to(url, save_path):
-    resp = requests.get(url)
+    resp = requests.get(url, timeout=TIMEOUT)
     with open(save_path, 'wb') as fh:
         fh.write(resp.content)
     return resp.content
@@ -306,11 +309,11 @@ class PackageFinder(object):
             with open(version_path, 'rb') as fh:
                 pkg_data = json.loads(fh.read())
         else:
-            real_pkg_name = pypi_real_name(pkg_name)
+            real_pkg_name = pypi_real_name(pkg_name, timeout=TIMEOUT)
             if not real_pkg_name:
                 raise ValueError("No pypi package named '%s' found" % pkg_name)
             pypi = PyPIJson(real_pkg_name, fast=True)
-            pypi_data = pypi.retrieve()
+            pypi_data = pypi.retrieve(timeout=TIMEOUT)
             pkg_data = {}
             releases = pypi_data.get('releases', {})
             for version, release_urls in six.iteritems(releases):
@@ -459,10 +462,10 @@ def resolve(requirements, graph, options):
         paths = list(dfs_path_iter(pkg_req.req, graph, level=1))
         solution_paths[pkg_name] = (pkg_req, paths)
         if options.verbose:
-            print("Solutions for '%s'" % pkg_req)
+            LOG.debug("Solutions for '%s'" % pkg_req)
             for p, p_level in paths:
                 indent = " " * p_level
-                print("%s%s" % (indent, p))
+                LOG.debug("%s%s" % (indent, p))
     return {}
 
 
