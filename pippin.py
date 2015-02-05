@@ -58,15 +58,17 @@ class NotFoundException(Exception):
     pass
 
 
-def parse_line(line):
+def parse_line(line, comes_from="???"):
     if line.startswith('-e') or line.startswith('--editable'):
         if line.startswith('-e'):
             line = line[2:].strip()
         else:
             line = line[len('--editable'):].strip().lstrip('=')
-        req = pip_req.InstallRequirement.from_editable(line, comes_from="??")
+        req = pip_req.InstallRequirement.from_editable(line,
+                                                       comes_from=comes_from)
     else:
-        req = pip_req.InstallRequirement.from_line(line, comes_from="??")
+        req = pip_req.InstallRequirement.from_line(line,
+                                                   comes_from=comes_from)
     return req
 
 
@@ -161,11 +163,11 @@ def create_parser():
         help="Scratch path (used for caching downloaded data)"
              " [default: %s]" % (os.getcwd()))
     parser.add_argument(
-        "--no-verbose",
+        "--verbose",
         dest="verbose",
-        action='store_false',
-        default=True,
-        help="Disable verbose output")
+        action='store_true',
+        default=False,
+        help="Enable verbose output")
     return parser
 
 
@@ -354,20 +356,27 @@ class DeepExpander(object):
         self.detailer = detailer
         self.egg_fail_cache = set()
 
-    def expand(self, pkg_req, graph=None):
-        if graph is None:
-            graph = DiGraph()
-        self._expand(pkg_req, graph)
+    def expand_many(self, pkg_reqs):
+        graph = DiGraph()
+        pkg_direct_deps = []
+        for pkg_req in pkg_reqs:
+            pkg_direct_deps.append(self._expand(pkg_req, graph))
+        for pkg_req, direct_deps in zip(pkg_reqs, pkg_direct_deps):
+            if not graph.has_node(pkg_req.req):
+                graph.add_node(pkg_req.req, req=pkg_req)
+            for m in direct_deps:
+                if m.req != pkg_req.req:
+                    graph.add_edge(pkg_req.req, m.req)
         return graph
 
     def _expand(self, pkg_req, graph):
         if graph.has_node(pkg_req.req):
-            return pkg_req.req
+            return [pkg_req]
         else:
             LOG.debug("Expanding matches for %s", pkg_req)
             graph.add_node(pkg_req.req, req=pkg_req)
-        possibles = self.finder.match_available(pkg_req)
-        for m in possibles:
+        useables = []
+        for m in self.finder.match_available(pkg_req):
             if not hasattr(m, 'details'):
                 try:
                     m.details = self.detailer.fetch(m)
@@ -380,14 +389,25 @@ class DeepExpander(object):
                         self.egg_fail_cache.add(m.req)
             if not hasattr(m, 'details'):
                 continue
-            if not graph.has_node(m.req):
-                graph.add_node(m.req, req=m)
-            if pkg_req.req != m.req:
+            useables.append(m)
+            graph.add_node(m.req, req=m, exact=True)
+            if m.req != pkg_req.req:
                 graph.add_edge(pkg_req.req, m.req)
             for dep in m.details['dependencies']:
                 dep_req = parse_line(dep)
-                graph.add_edge(m.req, self._expand(dep_req, graph))
-        return pkg_req.req
+                dep_sols = []
+                for dep_sol in self._expand(dep_req, graph):
+                    graph.add_edge(m.req, dep_sol.req)
+                    dep_sols.append(dep_sol)
+                if not dep_sols:
+                    raise ValueError("No solutions found for required"
+                                     " dependency '%s' for '%s'"
+                                     " (originating from requirement '%s')"
+                                     % (dep_req, m, pkg_req))
+        if not useables:
+            raise ValueError("No working solutions found for required"
+                             " requirement '%s'" % (pkg_req))
+        return useables
 
 
 def expand(requirements, options):
@@ -403,55 +423,45 @@ def expand(requirements, options):
         buf.write(pkg_req.req)
         buf.write("\n")
     graph_name = hashlib.md5(buf.getvalue().strip()).hexdigest()
-    graph_pickled_filename = os.path.join(options.scratch, '.graphs',
-                                          "%s.gpickle" % graph_name)
+    graph_name += str(PackageFinder.MAX_VERSIONS)
+    graph_pickled_filename = os.path.join(
+        options.scratch, '.graphs', "%s.gpickle" % graph_name)
     if os.path.exists(graph_pickled_filename):
+        print("Loading prior graph from '%s" % graph_pickled_filename)
         return nx.read_gpickle(graph_pickled_filename)
     else:
         finder = PackageFinder(options)
         detailer = EggDetailer(options)
         graph = DiGraph(name=graph_name)
         expander = DeepExpander(finder, detailer, options)
-        for (pkg_name, pkg_req) in six.iteritems(requirements):
-            expander.expand(pkg_req, graph=graph)
+        graph = expander.expand_many(list(six.itervalues(requirements)))
         nx.write_gpickle(graph, graph_pickled_filename)
         return graph
 
 
+def path_iter(root, graph, level=0):
+    children = list(graph.successors_iter(root))
+    yield root, level
+    for a_child in children:
+        for c, c_level in path_iter(a_child, graph, level=level+1):
+            yield c, c_level
+
+
 def resolve(requirements, graph, options):
-    # Unset node markings that say whether this has worked or not...
-    for dep, dep_dep in traversal.dfs_edges(graph):
-        graph.node[dep]['bad'] = False
-        graph.node[dep_dep]['bad'] = False
-    selections = {}
-    path = []
-    while True:
-        if not requirements:
-            return selections
-        pkg_name, pkg_req = requirements.popitem()
-        path.append((pkg_name, pkg_req))
-        for dep in graph.edges_iter(pkg_req.req):
-            dep_path = []
-            while dep is not None:
-                dep_path.append(dep)
-                valid_dep = None
-                for dep_dep, dep_data in graph.edges_iter(dep, data=True):
-                    if not graph.node[dep_dep]['bad']:
-                        pkg_req = dep_data['req']
-                        if not check_is_compatible_alongside(pkg_req,
-                                                             selections):
-                            graph.node[dep_dep]['bad'] = True
-                        else:
-                            valid_dep = dep_dep
-                            break
-                if valid_dep is None:
-                    try:
-                        dep = dep_path.pop()
-                    except IndexError:
-                        dep = None
-                else:
-                    dep = valid_dep
-            print(dep_path)
+    solutions = OrderedDict()
+    for pkg_name, pkg_req in six.iteritems(requirements):
+        solutions[pkg_name] = traversal.dfs_tree(graph, pkg_req.req)
+        pkg_graph = solutions[pkg_name]
+        # For some reason this isn't cloned, so clone it...
+        for pkg_req in six.iterkeys(graph.node):
+            if pkg_graph.has_node(pkg_req):
+                pkg_graph.node[pkg_req].update(graph.node[pkg_req])
+    for pkg_name, pkg_req in six.iteritems(requirements):
+        print(pkg_name)
+        pkg_tree = solutions[pkg_name]
+        paths = list(path_iter(pkg_req.req, pkg_tree))
+        print(paths)
+    return {}
 
 
 def setup_logging(options):
@@ -484,6 +494,9 @@ def main():
     graph = expand(initial, options)
     print(graph.pformat())
     resolved = resolve(initial, graph, options)
+    print("Resolved package set:")
+    for r in sorted(list(six.itervalues(resolved)), cmp=req_cmp):
+        print(" - %s" % r)
 
 
 if __name__ == "__main__":
