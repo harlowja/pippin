@@ -63,17 +63,23 @@ class NotFoundException(Exception):
     pass
 
 
-def parse_line(line, comes_from="???"):
+def parse_line(line, path=None):
+    from_where = ''
+    if path:
+        from_where = " -> ".join(str(r.req) for r in path)
+        from_where = from_where.strip()
+    if not from_where:
+        from_where = "???"
     if line.startswith('-e') or line.startswith('--editable'):
         if line.startswith('-e'):
             line = line[2:].strip()
         else:
             line = line[len('--editable'):].strip().lstrip('=')
         req = pip_req.InstallRequirement.from_editable(line,
-                                                       comes_from=comes_from)
+                                                       comes_from=from_where)
     else:
         req = pip_req.InstallRequirement.from_line(line,
-                                                   comes_from=comes_from)
+                                                   comes_from=from_where)
     return req
 
 
@@ -290,7 +296,7 @@ class PackageFinder(object):
         self.no_sdist_cache = set()
         self.no_parse_cache = set()
 
-    def match_available(self, pkg_req):
+    def match_available(self, pkg_req, path=None):
         looked_in = []
         useables = []
         available = self._find_releases(req_key(pkg_req))
@@ -299,7 +305,7 @@ class PackageFinder(object):
             v = a.string_version
             if v in req:
                 line = "%s==%s" % (req_key(pkg_req), v)
-                m_req = parse_line(line)
+                m_req = parse_line(line, path=path)
                 m_req.origin_url = a.origin_url
                 m_req.origin_filename = a.origin_filename
                 m_req.origin_size = a.origin_size
@@ -384,21 +390,22 @@ class DeepExpander(object):
         graph = DiGraph()
         pkg_direct_deps = []
         for pkg_req in pkg_reqs:
-            pkg_direct_deps.append(self._expand(pkg_req, graph))
+            path = [pkg_req]
+            pkg_direct_deps.append(self._expand(pkg_req, graph, path))
         for pkg_req, direct_deps in zip(pkg_reqs, pkg_direct_deps):
             graph.add_node(pkg_req.req, req=pkg_req)
             for m in direct_deps:
                 graph.add_edge_not_same(pkg_req.req, m.req)
         return graph
 
-    def _expand(self, pkg_req, graph):
+    def _expand(self, pkg_req, graph, path):
         if graph.has_node(pkg_req.req):
             return [pkg_req]
         else:
             LOG.debug("Expanding matches for %s", pkg_req)
             graph.add_node(pkg_req.req, req=pkg_req)
         useables = []
-        for m in self.finder.match_available(pkg_req):
+        for m in self.finder.match_available(pkg_req, path=path):
             if not hasattr(m, 'details'):
                 try:
                     m.details = self.detailer.fetch(m)
@@ -415,12 +422,15 @@ class DeepExpander(object):
             if m.req == pkg_req.req:
                 continue
             else:
+                new_path = path[:]
+                new_path.append(m)
                 graph.add_node(m.req, req=m, exact=True)
                 graph.add_edge_not_same(pkg_req.req, m.req)
                 for dep in m.details['dependencies']:
-                    dep_req = parse_line(dep)
+                    dep_req = parse_line(dep, path=new_path)
+                    new_path.append(dep_req)
                     dep_sols = []
-                    for dep_sol in self._expand(dep_req, graph):
+                    for dep_sol in self._expand(dep_req, graph, new_path):
                         dep_sols.append(dep_sol)
                         graph.add_edge_not_same(m.req, dep_sol.req)
                     if not dep_sols:
@@ -428,6 +438,8 @@ class DeepExpander(object):
                                          " dependency '%s' for '%s'"
                                          " (originating from requirement '%s')"
                                          % (dep_req, m, pkg_req))
+                    else:
+                        new_path.pop()
         if not useables:
             raise ValueError("No working solutions found for required"
                              " requirement '%s'" % (pkg_req))
