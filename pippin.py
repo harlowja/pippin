@@ -31,6 +31,9 @@ import shutil
 import sys
 import tempfile
 
+# TODO: get rid of this...
+from taskflow.types import tree
+
 from distutils import version as dist_version
 
 import argparse
@@ -455,30 +458,56 @@ def expand(requirements, options):
         return graph
 
 
-def dfs_path_iter(root, graph, level=0, only_exact=True):
-    if only_exact:
-        if graph.node[root].get('exact'):
-            yield root, level
-    else:
-        yield root, level
+def tree_generator(root, graph, parent=None):
     children = list(graph.successors_iter(root))
-    for c in children:
-        for c, child_level in dfs_path_iter(c, graph,
-                                            level=level+1,
-                                            only_exact=only_exact):
-            yield c, child_level
+    if parent is None:
+        parent = tree.Node(root, **graph.node[root])
+    for child in children:
+        node = tree.Node(child, **graph.node[child])
+        parent.add(node)
+        tree_generator(child, graph, parent=node)
+    return parent
 
 
 def resolve(requirements, graph, options):
-    solution_paths = OrderedDict()
+    def _is_exact(req):
+        if len(req.specs) == 0:
+            return False
+        equals = 0
+        for (op, _ver) in req.specs:
+            if op == "==":
+                equals += 1
+        if equals == len(req.specs):
+            return True
+        return False
+    solutions = OrderedDict()
     for pkg_name, pkg_req in six.iteritems(requirements):
-        paths = list(dfs_path_iter(pkg_req.req, graph, level=1))
-        solution_paths[pkg_name] = (pkg_req, paths)
-        if options.verbose:
-            LOG.debug("Solutions for '%s'" % pkg_req)
-            for p, p_level in paths:
-                indent = " " * p_level
-                LOG.debug("%s%s" % (indent, p))
+        node = tree_generator(pkg_req.req, graph)
+        solutions[pkg_name] = node
+        node_paths = []
+        for sub_node in node:
+            leaves = []
+            for n in sub_node.dfs_iter():
+                if not n.child_count():
+                    leaves.append(n)
+            paths = []
+            for n in leaves:
+                path = []
+                for p_n in n.path_iter():
+                    if _is_exact(p_n.item):
+                        path.insert(0, p_n.item)
+                    if p_n is sub_node:
+                        break
+                paths.append(path)
+            if not paths:
+                if _is_exact(sub_node.item):
+                    paths.append([sub_node.item])
+                else:
+                    raise RuntimeError("No solution paths found for '%s'"
+                                       % sub_node.item)
+            LOG.debug("%s solution paths found for '%s' (solution"
+                      " for '%s') found", len(paths), sub_node.item, pkg_req)
+            node_paths.append(paths)
     return {}
 
 
