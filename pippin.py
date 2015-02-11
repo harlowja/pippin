@@ -38,7 +38,6 @@ from distutils import version as dist_version
 
 import argparse
 import networkx as nx
-from networkx.algorithms import traversal
 from pip import req as pip_req
 from pkgtools.pypi import PyPIJson
 from pkgtools.pypi import real_name as pypi_real_name
@@ -83,6 +82,12 @@ class DiGraph(nx.DiGraph):
     def __init__(self, data=None, name=''):
         super(DiGraph, self).__init__(name=name, data=data)
         self.frozen = False
+
+    def add_edge_not_same(self, n1, n2):
+        if n1 == n2:
+            return
+        else:
+            self.add_edge(n1, n2)
 
     def pformat(self):
         """Pretty formats your graph into a string.
@@ -381,11 +386,9 @@ class DeepExpander(object):
         for pkg_req in pkg_reqs:
             pkg_direct_deps.append(self._expand(pkg_req, graph))
         for pkg_req, direct_deps in zip(pkg_reqs, pkg_direct_deps):
-            if not graph.has_node(pkg_req.req):
-                graph.add_node(pkg_req.req, req=pkg_req)
+            graph.add_node(pkg_req.req, req=pkg_req)
             for m in direct_deps:
-                if m.req != pkg_req.req:
-                    graph.add_edge(pkg_req.req, m.req)
+                graph.add_edge_not_same(pkg_req.req, m.req)
         return graph
 
     def _expand(self, pkg_req, graph):
@@ -409,20 +412,22 @@ class DeepExpander(object):
             if not hasattr(m, 'details'):
                 continue
             useables.append(m)
-            graph.add_node(m.req, req=m, exact=True)
-            if m.req != pkg_req.req:
-                graph.add_edge(pkg_req.req, m.req)
-            for dep in m.details['dependencies']:
-                dep_req = parse_line(dep)
-                dep_sols = []
-                for dep_sol in self._expand(dep_req, graph):
-                    graph.add_edge(m.req, dep_sol.req)
-                    dep_sols.append(dep_sol)
-                if not dep_sols:
-                    raise ValueError("No solutions found for required"
-                                     " dependency '%s' for '%s'"
-                                     " (originating from requirement '%s')"
-                                     % (dep_req, m, pkg_req))
+            if m.req == pkg_req.req:
+                continue
+            else:
+                graph.add_node(m.req, req=m, exact=True)
+                graph.add_edge_not_same(pkg_req.req, m.req)
+                for dep in m.details['dependencies']:
+                    dep_req = parse_line(dep)
+                    dep_sols = []
+                    for dep_sol in self._expand(dep_req, graph):
+                        dep_sols.append(dep_sol)
+                        graph.add_edge_not_same(m.req, dep_sol.req)
+                    if not dep_sols:
+                        raise ValueError("No solutions found for required"
+                                         " dependency '%s' for '%s'"
+                                         " (originating from requirement '%s')"
+                                         % (dep_req, m, pkg_req))
         if not useables:
             raise ValueError("No working solutions found for required"
                              " requirement '%s'" % (pkg_req))
