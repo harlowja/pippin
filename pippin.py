@@ -525,6 +525,10 @@ def resolve(requirements, graph, options):
                                        % sub_node.item)
             LOG.debug("%s solution paths found for '%s' (solution"
                       " for '%s') found", len(paths), sub_node.item, pkg_req)
+            for i, path in enumerate(paths):
+                LOG.debug("Solution path %s:", i)
+                for p in path:
+                    LOG.debug(" - %s" % p)
             node_paths.append(paths)
     return {}
 
