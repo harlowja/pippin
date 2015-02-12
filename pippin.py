@@ -499,6 +499,7 @@ def resolve(requirements, graph, options):
         return False
     solutions = OrderedDict()
     for pkg_name, pkg_req in six.iteritems(requirements):
+        LOG.debug("Generating the solution paths for '%s'", pkg_req)
         node = tree_generator(pkg_req.req, graph)
         solutions[pkg_name] = node
         node_paths = []
